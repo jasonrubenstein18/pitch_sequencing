@@ -1,0 +1,3288 @@
+<!DOCTYPE html>
+<!-- saved from url=(0014)about:internet -->
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta http-equiv="x-ua-compatible" content="IE=9" >
+
+<title>Renaming to match for merges</title>
+
+<style type="text/css">
+body, td {
+   font-family: sans-serif;
+   background-color: white;
+   font-size: 12px;
+   margin: 8px;
+}
+
+tt, code, pre {
+   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+
+h1 { 
+   font-size:2.2em; 
+}
+
+h2 { 
+   font-size:1.8em; 
+}
+
+h3 { 
+   font-size:1.4em; 
+}
+
+h4 { 
+   font-size:1.0em; 
+}
+
+h5 { 
+   font-size:0.9em; 
+}
+
+h6 { 
+   font-size:0.8em; 
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+pre {	
+   margin-top: 0;
+   max-width: 95%;
+   border: 1px solid #ccc;
+   white-space: pre-wrap;
+}
+
+pre code {
+   display: block; padding: 0.5em;
+}
+
+code.r, code.cpp {
+   background-color: #F8F8F8;
+}
+
+table, td, th {
+  border: none;
+}
+
+blockquote {
+   color:#666666;
+   margin:0;
+   padding-left: 1em;
+   border-left: 0.5em #EEE solid;
+}
+
+hr {
+   height: 0px;
+   border-bottom: none;
+   border-top-width: thin;
+   border-top-style: dotted;
+   border-top-color: #999999;
+}
+
+@media print {
+   * { 
+      background: transparent !important; 
+      color: black !important; 
+      filter:none !important; 
+      -ms-filter: none !important; 
+   }
+
+   body { 
+      font-size:12pt; 
+      max-width:100%; 
+   }
+       
+   a, a:visited { 
+      text-decoration: underline; 
+   }
+
+   hr { 
+      visibility: hidden;
+      page-break-before: always;
+   }
+
+   pre, blockquote { 
+      padding-right: 1em; 
+      page-break-inside: avoid; 
+   }
+
+   tr, img { 
+      page-break-inside: avoid; 
+   }
+
+   img { 
+      max-width: 100% !important; 
+   }
+
+   @page :left { 
+      margin: 15mm 20mm 15mm 10mm; 
+   }
+     
+   @page :right { 
+      margin: 15mm 10mm 15mm 20mm; 
+   }
+
+   p, h2, h3 { 
+      orphans: 3; widows: 3; 
+   }
+
+   h2, h3 { 
+      page-break-after: avoid; 
+   }
+}
+
+</style>
+
+
+
+<!-- MathJax scripts -->
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+</head>
+
+<body>
+<p>install.packages(&ldquo;dplyr&rdquo;)
+install.packages(&ldquo;RMySQL&rdquo;)
+install.packages(&ldquo;reshape2&rdquo;)
+install.packages(&ldquo;ggplot2&rdquo;)
+install.packages(&ldquo;grid&rdquo;)
+install.packages(&ldquo;gridExtra&rdquo;)
+install.packages(&ldquo;ROCR&rdquo;)
+install.packages(&ldquo;randomForest&rdquo;)
+install.packages(&ldquo;gam&rdquo;)
+install.packages(&ldquo;scales&rdquo;)
+install.packages(&ldquo;magrittr&rdquo;)
+install.packages(&ldquo;plyr&rdquo;)
+install.packages(&ldquo;gplots&rdquo;)
+installed.packages(&ldquo;MASS&rdquo;)
+library(plyr)
+library(magrittr)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(ROCR)
+library(randomForest)
+library(gam)
+library(scales)
+library(reshape2)
+library(RMySQL)
+library(dplyr)
+library(gplots)
+library(caret)
+library(readr)
+library(MASS)
+#px and py (pitch location), Tunnel Data
+#exit speed, angle, distance, hc_x and hc_y (hit coordinates)</p>
+
+<p>statcast.2016 &lt;- read.csv(&ldquo;~/Desktop/pitcher_statcast.csv&rdquo;, stringsAsFactors = FALSE)
+#whiffs.data &lt;- data.frame(statcast.2016)
+playerid_list &lt;- read_csv(&ldquo;~/Downloads/playerid_list (1).csv&rdquo;)
+bpTunnelData &lt;- read_csv(&ldquo;~/Downloads/bpstats_03-14-2017 (1).csv&rdquo;)
+View(bpTunnelData)</p>
+
+<p>str(bpTunnelData)
+chFA &lt;- subset(bpTunnelData, first_pitch == &ldquo;CH&rdquo; &amp; second_pitch == &ldquo;FA&rdquo;)
+plot(chFA$<code>Release Diff</code>, chFA$<code>Tunnel Differential</code>, main = &ldquo;CH-FA Release.to.Tunnel&rdquo;)
+abline(rlm(chFA$<code>Release Diff</code> ~ chFA$<code>Tunnel Differential</code>), col=&ldquo;red&rdquo;)
+lines(lowess(chFA$<code>Release Diff</code> ~ chFA$<code>Tunnel Differential</code>), col = &ldquo;blue&rdquo;)</p>
+
+<p>chFA_rlm &lt;- rlm(chFA$<code>Release Diff</code> ~ chFA$<code>Tunnel Differential</code>)
+summary(chFA_rlm)
+plot(chFA_rlm)</p>
+
+<h1>Renaming to match for merges</h1>
+
+<p>names(statcast.2016)
+statcast.2016 &lt;- plyr::rename(statcast.2016, c(&ldquo;pitcher&rdquo; = &ldquo;MLBCODE&rdquo;, &ldquo;player_name&rdquo; = &ldquo;NAME&rdquo;))
+bpTunnelData &lt;- subset(bpTunnelData, PITCHES &gt; 0)
+bpTunnelData &lt;- plyr::rename(bpTunnelData, c(&ldquo;1st Pitch Type&rdquo; = &ldquo;first_pitch&rdquo;, &ldquo;2nd Pitch Type&rdquo; = &ldquo;second_pitch&rdquo;))</p>
+
+<h1>Merge statcast and player_id</h1>
+
+<p>statcast.2016_id_merge &lt;- merge(statcast.2016, playerid_list, by = &ldquo;MLBCODE&rdquo;)</p>
+
+<h1>Merge Tunnel and Statcast</h1>
+
+<p>totalMerge &lt;- merge(statcast.2016_id_merge, bpTunnelData, by = c(&ldquo;first_pitch&rdquo;, &ldquo;second_pitch&rdquo;, &ldquo;NAME&rdquo;), all.y = TRUE)
+str(totalMerge)
+totalMergeInPlay &lt;- subset(totalMerge, totalMerge\( description == c("In play, out(s)", "In play, run(s)", "In play, no out"))
+totalMergeInPlay <- plyr::rename(totalMergeInPlay, c(totalMergeInPlay \)<code>Release Diff</code> == &ldquo;average.release.variation&rdquo;, totalMergeInPlay$<code>Flight Time Diff</code> == &ldquo;flight.time.differential&rdquo;, totalMergeInPlay$<code>Post-tunnel Break</code> == &ldquo;post.tunnel.break&rdquo;, totalMergeInPlay$<code>Tunnel Differential</code> == &ldquo;pre.post.tunnel.break.ratio&rdquo;, totalMergeInPlay$<code>Plate Diff</code> == &ldquo;plate.differntial&rdquo;))</p>
+
+<p>glm(totalMergeInPlay\( hit ~ totalMergeInPlay \)<code>Release Diff</code>, family = binomial, data = totalMergeInPlay)
+glm(totalMergeInPlay\( hit ~ totalMergeInPlay \)<code>Release Diff</code> + totalMergeInPlay$<code>Flight Time Diff</code>, family = binomial, data = totalMergeInPlay)
+glm(totalMergeInPlay\( hit ~ totalMergeInPlay \)<code>Release Diff</code> + totalMergeInPlay$<code>Flight Time Diff</code> + totalMergeInPlay$<code>Post-tunnel Break</code>, family = binomial, data = totalMergeInPlay)
+glm(totalMergeInPlay\( hit ~ totalMergeInPlay \)<code>Release Diff</code> + totalMergeInPlay$<code>Flight Time Diff</code> + totalMergeInPlay$<code>Post-tunnel Break</code> + totalMergeInPlay$<code>Release:Tunnel</code> + totalMergeInPlay$<code>Plate Diff</code>, family = binomial, data = totalMergeInPlay)</p>
+
+<p>#statcast_2016 &lt;- subset(statcast_2016, select = c(3:61, 1:2))</p>
+
+<h1>code if the batted ball resulted in a hit or an out</h1>
+
+<p>totalMergeInPlay$hit_distance_sc &lt;- as.numeric(totalMergeInPlay$hit_distance_sc)
+totalMergeInPlay$hit_angle &lt;- as.numeric(totalMergeInPlay$hit_angle)
+totalMergeInPlay$hit_speed &lt;- as.numeric(totalMergeInPlay$hit_speed)</p>
+
+<p>totalMergeInPlay$hit &lt;- with(totalMergeInPlay, ifelse(grepl(&ldquo;Single&rdquo;, totalMergeInPlay$events), 1,
+                                                            ifelse(grepl(&ldquo;Double&rdquo;, totalMergeInPlay$events), 1,
+                                                                         ifelse(grepl(&ldquo;Triple&rdquo;, totalMergeInPlay$events), 1, 
+                                                                                     ifelse(grepl(&ldquo;Home Run&rdquo;, totalMergeInPlay$events), 1, 0))))) %&gt;% 
+    as.factor()</p>
+
+<h1>create a variable for the fielding team</h1>
+
+<p>totalMergeInPlay$fieldingTeam &lt;- with(totalMergeInPlay, ifelse(inning_topbot == &ldquo;bot&rdquo;, away_team, home_team)) %&gt;% 
+    as.factor()</p>
+
+<p>#F$hit_distance_sc[totalMergeInPlay$hit_distance_sc == &ldquo;null&rdquo;] = NA
+#totalMergeInPlay$hit_speed[totalMergeInPlay$hit_speed == &ldquo;null&rdquo;] = NA
+#totalMergeInPlay$hit_angle[totalMergeInPlay$hit_angle == &ldquo;null&rdquo;] = NA</p>
+
+<h1>include row names for unique record identification</h1>
+
+<p>totalMergeInPlay$row &lt;- row.names(totalMergeInPlay) %&gt;% as.numeric()</p>
+
+<h1>recode stand and home_team as factors</h1>
+
+<p>totalMergeInPlay$stand &lt;- as.factor(totalMergeInPlay$stand)
+totalMergeInPlay$home_team &lt;- as.factor(totalMergeInPlay$home_team)</p>
+
+<p>totalMergeInPlay$game_date &lt;- as.Date(totalMergeInPlay$game_date)
+str(totalMergeInPlay)</p>
+
+<h1>subset</h1>
+
+<p>totalMergeInPlay\( release.diff <- totalMergeInPlay \)<code>Release Diff</code></p>
+
+<p>totalMergeInPlay_working_data &lt;- ungroup(totalMergeInPlay) %&gt;%
+    filter(game_date &lt;= &ldquo;2016-05-28&rdquo;) %&gt;%
+    select(hit_distance_sc:hit_angle, hit_speed, hc_x, hc_y, hit, stand, fieldingTeam, release.diff, home_team,  row) %&gt;%
+    filter(!is.na(hit_distance_sc)) %&gt;%
+    filter(!is.na(hit_angle)) %&gt;% 
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(release.diff)) %&gt;%
+    arrange(desc(hit))
+head(totalMergeInPlay_working_data)
+str(ungroup(totalMergeInPlay))
+table(totalMergeInPlay_working_data$hit)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>totalMergeInPlay_working_data &lt;- filter(totalMergeInPlay_working_data, hc_x != 1, hc_y != 1)
+head(totalMergeInPlay_working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>totalMergeInPlay_train &lt;- subset(totalMergeInPlay_train, select = c(release.diff, hit_distance_sc:fieldingTeam, home_team:row))
+set.seed(42)
+totalMergeInPlay_train &lt;- sample_frac(totalMergeInPlay_working_data, .15, replace = FALSE)
+totalMergeInPlay_split &lt;- setdiff(totalMergeInPlay_working_data, totalMergeInPlay_train)
+totalMergeInPlay_test &lt;- sample_frac(totalMergeInPlay_split, .50, replace = FALSE)
+totalMergeInPlay_validate &lt;- setdiff(totalMergeInPlay_split, totalMergeInPlay_test)</p>
+
+<p>nrow(totalMergeInPlay_train) + nrow(totalMergeInPlay_test) + nrow(totalMergeInPlay_validate) == nrow(totalMergeInPlay_working_data)</p>
+
+<p>with(totalMergeInPlay_train, table(hit)) %&gt;% prop.table()
+with(totalMergeInPlay_test, table(hit)) %&gt;% prop.table()
+with(totalMergeInPlay_validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(totalMergeInPlay_train)</p>
+
+<p>str(totalMergeInPlay)
+##as.numeric(totalMergeInPlay$hit_distance_sc, totalMergeInPlay$hit_speed, totalMergeInPlay$hit_angle)</p>
+
+<p>#totalMergeInPlay_train$hit_distance_sc &lt;- as.numeric(totalMergeInPlay_train$hit_distance_sc)
+#totalMergeInPlay_train$hit_speed &lt;- as.numeric(totalMergeInPlay_train$hit_speed)
+#totalMergeInPlay_train$hit_angle &lt;- as.numeric(totalMergeInPlay_train$hit_angle)
+#View(totalMergeInPlay_train)
+totalMergeInPlay_scaled_data &lt;- scale(totalMergeInPlay_train[,c(1:5, 9)])
+totalMergeInPlay_scale_values &lt;- attr(totalMergeInPlay_scaled_data, &#39;scaled:scale&#39;)
+totalMergeInPlay_scale_values
+totalMergeInPlay_center_values &lt;- attr(totalMergeInPlay_scaled_data, &#39;scaled:center&#39;)
+totalMergeInPlay_center_values
+totalMergeInPlay_train &lt;- cbind(totalMergeInPlay_scaled_data, select(totalMergeInPlay_train, hit:row))</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>totalMergeInPlay_levels_home_team &lt;- levels(totalMergeInPlay_train$home_team)
+totalMergeInPlay_levels_stand &lt;- levels(totalMergeInPlay_train$stand)
+totalMergeInPlay_levels_fieldingTeam &lt;- levels(totalMergeInPlay_train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+#levels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>#View(totalMergeInPlay_test)</p>
+
+<p>totalMergeInPlay_test$hit_distance_sc &lt;- (totalMergeInPlay_test$hit_distance_sc - totalMergeInPlay_center_values[1]) / totalMergeInPlay_scale_values[1]</p>
+
+<p>totalMergeInPlay_test$hit_speed &lt;- (totalMergeInPlay_test$hit_speed - totalMergeInPlay_center_values[2]) / totalMergeInPlay_scale_values[2]</p>
+
+<p>totalMergeInPlay_test$hit_angle &lt;- (totalMergeInPlay_test$hit_angle - totalMergeInPlay_center_values[3]) / totalMergeInPlay_scale_values[3]</p>
+
+<p>totalMergeInPlay_test$hc_x &lt;- (totalMergeInPlay_test$hc_x - totalMergeInPlay_center_values[4]) / totalMergeInPlay_scale_values[4]</p>
+
+<p>totalMergeInPlay_test$hc_y &lt;- (totalMergeInPlay_test$hc_y - totalMergeInPlay_center_values[5]) / totalMergeInPlay_scale_values[5]</p>
+
+<p>totalMergeInPlay_test$release.diff &lt;- (totalMergeInPlay_test$release.diff - totalMergeInPlay_center_values[6]) / totalMergeInPlay_scale_values[6]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>totalMergeInPlay_validate$hit_distance_sc &lt;- (totalMergeInPlay_validate$hit_distance_sc - totalMergeInPlay_center_values[1]) / totalMergeInPlay_scale_values[1]</p>
+
+<p>totalMergeInPlay_validate$hit_speed &lt;- (totalMergeInPlay_validate$hit_speed - totalMergeInPlay_center_values[2]) / totalMergeInPlay_scale_values[2]</p>
+
+<p>totalMergeInPlay_validate$hit_angle &lt;- (totalMergeInPlay_validate$hit_angle - totalMergeInPlay_center_values[3]) / totalMergeInPlay_scale_values[3]</p>
+
+<p>totalMergeInPlay_validate$hc_x &lt;- (totalMergeInPlay_validate$hc_x - totalMergeInPlay_center_values[4]) / totalMergeInPlay_scale_values[4]</p>
+
+<p>totalMergeInPlay_validate$hc_y &lt;- (totalMergeInPlay_validate$hc_y - totalMergeInPlay_center_values[5]) / totalMergeInPlay_scale_values[5]</p>
+
+<p>totalMergeInPlay_validate$release.diff &lt;- (totalMergeInPlay_validate$release.diff - totalMergeInPlay_center_values[6]) / totalMergeInPlay_scale_values[6]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(totalMergeInPlay_train)
+totalMergeInPlay_train &lt;- subset(totalMergeInPlay_train, select = c(1:9, 11:12))
+set.seed(42)
+totalMergeInPlay_rf.1 &lt;- randomForest(as.factor(hit) ~ ., data = select(totalMergeInPlay_train, -row), ntree = 501, importance = TRUE)</p>
+
+<p>print(totalMergeInPlay_rf.1)</p>
+
+<p>plot(totalMergeInPlay_rf.1)</p>
+
+<p>varImpPlot(totalMergeInPlay_rf.1)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, release diff, and hc_x stand, fielding team and park</h1>
+
+<p>set.seed(42)
+totalMergeInPlay_rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(totalMergeInPlay_train, -row, -hit_distance_sc, -hc_y), importance = TRUE)</p>
+
+<p>print(totalMergeInPlay_rf.5)</p>
+
+<p>plot(totalMergeInPlay_rf.5)</p>
+
+<p>varImpPlot(totalMergeInPlay_rf.5)</p>
+
+<p>totalMergeInPlay_predict_fit.rf.5 &lt;- data.frame(fits = predict(totalMergeInPlay_rf.5, totalMergeInPlay_test, type = &ldquo;prob&rdquo;)[,2], actuals = totalMergeInPlay_test$hit)</p>
+
+<p>totalMergeInPlay_pred.rf.5 &lt;- prediction(totalMergeInPlay_predict_fit.rf.5$fits, totalMergeInPlay_predict_fit.rf.5$actuals)</p>
+
+<p>totalMergeInPlay_roc.pred.rf.5 &lt;- performance(totalMergeInPlay_pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)</p>
+
+<p>plot(totalMergeInPlay_roc.pred.rf.5)
+abline(a = 0, b = 1)
+totalMergeInPlay_opt &lt;- opt.cut(totalMergeInPlay_roc.pred.rf.5, totalMergeInPlay_pred.rf.5)
+totalMergeInPlay_opt
+totalMergeInPlay_opt &lt;- totalMergeInPlay_opt[3]
+totalMergeInPlay_predict_fit.rf.5$fits &lt;- with(totalMergeInPlay_predict_fit.rf.5, ifelse(fits &gt; totalMergeInPlay_opt, 1, 0)) </p>
+
+<p>str(totalMergeInPlay_test)</p>
+
+<p>#totalMergeInPlay_test$fieldingTeam &lt;- as.character(totalMergeInPlay_test$fieldingTeam)
+#totalMergeInPlay_test$home_team &lt;- as.character(totalMergeInPlay_test$home_team)
+#totalMergeInPlay_test$hit &lt;- as.logical(totalMergeInPlay_test$hit)
+#totalMergeInPlay_test$stand &lt;- as.logical(totalMergeInPlay_test$stand)
+str(totalMergeInPlay_test)
+totalMergeInPlay_rf.5_confusion_test &lt;- confusionMatrix(model = totalMergeInPlay_rf.5, x = totalMergeInPlay_test, y = totalMergeInPlay_test$hit)
+totalMergeInPlay_rf.5_confusion_validate &lt;- confusionMatrix(model = totalMergeInPlay_rf.5, x = totalMergeInPlay_validate, y = totalMergeInPlay_validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>totalMergeInPlay_test_rows &lt;- totalMergeInPlay_test$row
+totalMergeInPlay_validate_rows &lt;- totalMergeInPlay_validate$row
+totalMergeInPlay_pred_data_emp_1 &lt;- ungroup(totalMergeInPlay) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% totalMergeInPlay_test_rows)</p>
+
+<p>totalMergeInPlay_pred_data_emp &lt;- ungroup(totalMergeInPlay) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% totalMergeInPlay_validate_rows) %&gt;%
+    rbind(totalMergeInPlay_pred_data_emp_1)</p>
+
+<p>totalMergeInPlay_out_of_training_rows &lt;- totalMergeInPlay_pred_data_emp$row</p>
+
+<p>totalMergeInPlay_rf.5_full_out_of_sample_data &lt;- ungroup(totalMergeInPlay) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% totalMergeInPlay_out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>totalMergeInPlay_rf.5_full_out_of_sample_data_scaled &lt;- totalMergeInPlay_rf.5_full_out_of_sample_data</p>
+
+<p>totalMergeInPlay_rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (totalMergeInPlay_rf.5_full_out_of_sample_data_scaled$hit_speed - totalMergeInPlay_center_values[2]) / totalMergeInPlay_scale_values[2]</p>
+
+<p>totalMergeInPlay_rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (totalMergeInPlay_rf.5_full_out_of_sample_data_scaled$hit_angle - totalMergeInPlay_center_values[3]) / totalMergeInPlay_scale_values[3]</p>
+
+<p>totalMergeInPlay_rf.5.prob &lt;- predict(totalMergeInPlay_rf.5, totalMergeInPlay_rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>totalMergeInPlay_rf.5_full_out_of_sample_data &lt;- cbind(filter(totalMergeInPlay_rf.5_full_out_of_sample_data, row %in% totalMergeInPlay_out_of_training_rows), totalMergeInPlay_rf.5.prob)</p>
+
+<p>names(totalMergeInPlay_rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;
+names(totalMergeInPlay_rf.5_full_out_of_sample_data)</p>
+
+<p>totalMergeInPlay_rf.5_full_out_of_sample_data_reduced &lt;- totalMergeInPlay_rf.5_full_out_of_sample_data %&gt;%
+    select(hit_distance_sc, hit_angle, hit_speed, hit, fits)</p>
+
+<p>totalMergeInPlay_rf.5_mean_table &lt;- totalMergeInPlay_rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>totalMergeInPlay_rf.5_full_out_of_sample_data$type &lt;- with(totalMergeInPlay_rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>totalMergeInPlay_rf.5_full_out_of_sample_data$hit_label &lt;- with(totalMergeInPlay_rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>totalMergeInPlay_rf.5_plot1 &lt;- ggplot(totalMergeInPlay_rf.5_full_out_of_sample_data, aes(hit_angle, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>totalMergeInPlay_rf.5_plot1</p>
+
+<p>totalMergeInPlay_rf.5_plot2 &lt;- ggplot(totalMergeInPlay_rf.5_full_out_of_sample_data, aes(hit_speed, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>totalMergeInPlay_rf.5_plot2</p>
+
+<p>totalMergeInPlay_rf.5_plot3 &lt;- ggplot(totalMergeInPlay_rf.5_full_out_of_sample_data, aes(hit_angle, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Speed off the Bat\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>totalMergeInPlay_rf.5_plot3</p>
+
+<p>totalMergeInPlay_grid_plot_rf.5 &lt;- grid.arrange(totalMergeInPlay_rf.5_plot1, totalMergeInPlay_rf.5_plot2, totalMergeInPlay_rf.5_plot3, ncol = 3)
+totalMergeInPlay_grid_plot_rf.5</p>
+
+<p>#ggsave(&ldquo;grid_plot_rf.5.png&rdquo;, grid_plot_rf.5rf.5, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h2>predicted probabilities using rf.5</h2>
+
+<h1>create a data set that combines the test and validation sets</h1>
+
+<p>totalMergeInPlay_test_rows &lt;- totalMergeInPlay_test$row
+totalMergeInPlay_validate_rows &lt;- totalMergeInPlay_validate$row
+totalMergeInPlay_pred_data_emp_1 &lt;- ungroup(totalMergeInPlay) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% totalMergeInPlay_test_rows)</p>
+
+<p>totalMergeInPlay_pred_data_emp &lt;- ungroup(totalMergeInPlay) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% totalMergeInPlay_validate_rows) %&gt;%
+    rbind(totalMergeInPlay_pred_data_emp_1)</p>
+
+<p>totalMergeInPlay_out_of_training_rows &lt;- totalMergeInPlay_pred_data_emp$row</p>
+
+<p>totalMergeInPlay_pred_data_emp &lt;- ungroup(totalMergeInPlay) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% totalMergeInPlay_out_of_training_rows) %&gt;%
+    select(hit_angle, hit_speed, stand, fieldingTeam, home_team) %&gt;%
+    filter(complete.cases(.))</p>
+
+<h1>empirical data</h1>
+
+<p>totalMergeInPlay_pred_data_emp_scaled &lt;- totalMergeInPlay_pred_data_emp</p>
+
+<p>totalMergeInPlay_pred_data_emp_scaled$hit_speed &lt;- (totalMergeInPlay_pred_data_emp_scaled$hit_speed - totalMergeInPlay_center_values[2]) / totalMergeInPlay_scale_values[2]</p>
+
+<p>totalMergeInPlay_pred_data_emp_scaled$hit_angle &lt;- (totalMergeInPlay_pred_data_emp_scaled$hit_angle - totalMergeInPlay_center_values[3]) / totalMergeInPlay_scale_values[3]</p>
+
+<p>totalMergeInPlay_pred_prob_hit &lt;- predict(totalMergeInPlay_rf.5, totalMergeInPlay_pred_data_emp_scaled, type = &ldquo;prob&rdquo;)[,2]
+totalMergeInPlay_pred_prob_hit_fits &lt;- cbind(totalMergeInPlay_pred_data_emp, totalMergeInPlay_pred_prob_hit)</p>
+
+<p>totalMergeInPlay_pred_prob_hit_fits[,c(1:2)] &lt;- totalMergeInPlay_pred_prob_hit_fits[,c(1:2)] %&gt;%
+    round(.)</p>
+
+<p>totalMergeInPlay_angle_speed_pred &lt;- totalMergeInPlay_pred_prob_hit_fits %&gt;% ggplot(aes(hit_speed, hit_angle)) + geom_tile(aes(fill = totalMergeInPlay_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(limit = c(0,1), low = &ldquo;red&rdquo;, high = &ldquo;blue&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nSI-FF Hit Probability\n&rdquo;) + theme_bp_grey()</p>
+
+<p>totalMergeInPlay_angle_speed_pred</p>
+
+<p>##########################</p>
+
+<h1>CU</h1>
+
+<p>CU$hit &lt;- with(CU, ifelse(grepl(&ldquo;Single&rdquo;, CU$events), 1,
+                                                    ifelse(grepl(&ldquo;Double&rdquo;, CU$events), 1,
+                                                                 ifelse(grepl(&ldquo;Triple&rdquo;, CU$events), 1, 
+                                                                             ifelse(grepl(&ldquo;Home Run&rdquo;, CU$events), 1, 0))))) %&gt;% 
+    as.factor()</p>
+
+<h1>create a variable for the fielding team</h1>
+
+<p>CU$fieldingTeam &lt;- with(CU, ifelse(inning_topbot == &ldquo;bot&rdquo;, away_team, home_team)) %&gt;% 
+    as.factor()</p>
+
+<p>#F$hit_distance_sc[CU$hit_distance_sc == &ldquo;null&rdquo;] = NA
+#CU$hit_speed[CU$hit_speed == &ldquo;null&rdquo;] = NA
+#CU$hit_angle[CU$hit_angle == &ldquo;null&rdquo;] = NA</p>
+
+<h1>include row names for unique record identification</h1>
+
+<p>CU$row &lt;- row.names(CU) %&gt;% as.numeric()</p>
+
+<h1>recode stand and home_team as factors</h1>
+
+<p>CU$stand &lt;- as.factor(CU$stand)
+CU$home_team &lt;- as.factor(CU$home_team)</p>
+
+<p>CU$game_date &lt;- as.Date(CU$game_date)</p>
+
+<h1>subset</h1>
+
+<p>CU_working_data &lt;- ungroup(CU) %&gt;%
+    filter(game_date &lt;= &ldquo;2016-05-28&rdquo;) %&gt;%
+    select(hit_distance_sc:hit_angle, hc_x, hc_y, hit, stand, fieldingTeam, home_team,  row) %&gt;%
+    filter(!is.na(hit_distance_sc)) %&gt;%
+    filter(!is.na(hit_angle)) %&gt;% 
+    filter(!is.na(hit_speed)) %&gt;%
+    arrange(desc(hit))
+head(CU_working_data)
+str(ungroup(CU))
+table(CU_working_data$hit)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>CU_working_data &lt;- filter(CU_working_data, hc_x != 1, hc_y != 1)
+head(CU_working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>set.seed(42)
+CU_train &lt;- sample_frac(CU_working_data, .15, replace = FALSE)
+CU_split &lt;- setdiff(CU_working_data, CU_train)
+CU_test &lt;- sample_frac(CU_split, .50, replace = FALSE)
+CU_validate &lt;- setdiff(CU_split, CU_test)</p>
+
+<p>nrow(CU_train) + nrow(CU_test) + nrow(CU_validate) == nrow(CU_working_data)</p>
+
+<p>with(CU_train, table(hit)) %&gt;% prop.table()
+with(CU_test, table(hit)) %&gt;% prop.table()
+with(CU_validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(CU_train)</p>
+
+<p>CU_scaled_data &lt;- scale(CU_train[,c(1:5)])
+CU_scale_values &lt;- attr(CU_scaled_data, &#39;scaled:scale&#39;)
+CU_scale_values</p>
+
+<p>CU_center_values &lt;- attr(CU_scaled_data, &#39;scaled:center&#39;)
+CU_center_values</p>
+
+<p>CU_train &lt;- cbind(CU_scaled_data, select(CU_train, hit:row))</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>CU_levels_home_team &lt;- levels(CU_train$home_team)
+CU_levels_stand &lt;- levels(CU_train$stand)
+CU_levels_fieldingTeam &lt;- levels(CU_train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+#levels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>CU_test$hit_distance_sc &lt;- (CU_test$hit_distance_sc - CU_center_values[1]) / CU_scale_values[1]</p>
+
+<p>CU_test$hit_speed &lt;- (CU_test$hit_speed - CU_center_values[2]) / CU_scale_values[2]</p>
+
+<p>CU_test$hit_angle &lt;- (CU_test$hit_angle - CU_center_values[3]) / CU_scale_values[3]</p>
+
+<p>CU_test$hc_x &lt;- (CU_test$hc_x - CU_center_values[4]) / CU_scale_values[4]</p>
+
+<p>CU_test$hc_y &lt;- (CU_test$hc_y - CU_center_values[5]) / CU_scale_values[5]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>CU_validate$hit_distance_sc &lt;- (CU_validate$hit_distance_sc - CU_center_values[1]) / CU_scale_values[1]</p>
+
+<p>CU_validate$hit_speed &lt;- (CU_validate$hit_speed - CU_center_values[2]) / CU_scale_values[2]</p>
+
+<p>CU_validate$hit_angle &lt;- (CU_validate$hit_angle - CU_center_values[3]) / CU_scale_values[3]</p>
+
+<p>CU_validate$hc_x &lt;- (CU_validate$hc_x - CU_center_values[4]) / CU_scale_values[4]</p>
+
+<p>CU_validate$hc_y &lt;- (CU_validate$hc_y - CU_center_values[5]) / CU_scale_values[5]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(CU_train)</p>
+
+<p>set.seed(42)
+CU_rf.1 &lt;- randomForest(as.factor(hit) ~ ., data = select(CU_train, -row), ntree = 501, importance = TRUE)</p>
+
+<p>print(CU_rf.1)</p>
+
+<p>plot(CU_rf.1)</p>
+
+<p>varImpPlot(CU_rf.1)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, stand, fielding team and park</h1>
+
+<p>set.seed(42)
+CU_rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(CU_train, -row, -hit_distance_sc, -hc_y, -hc_x), importance = TRUE)</p>
+
+<p>print(CU_rf.5)</p>
+
+<p>plot(CU_rf.5)</p>
+
+<p>varImpPlot(CU_rf.5)</p>
+
+<p>CU_predict_fit.rf.5 &lt;- data.frame(fits = predict(CU_rf.5, CU_test, type = &ldquo;prob&rdquo;)[,2], actuals = CU_test$hit)</p>
+
+<p>CU_pred.rf.5 &lt;- prediction(CU_predict_fit.rf.5$fits, CU_predict_fit.rf.5$actuals)</p>
+
+<p>CU_roc.pred.rf.5 &lt;- performance(CU_pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)</p>
+
+<p>plot(CU_roc.pred.rf.5)
+abline(a = 0, b = 1)
+CU_opt &lt;- opt.cut(CU_roc.pred.rf.5, CU_pred.rf.5)
+CU_opt
+CU_opt &lt;- CU_opt[3]
+CU_predict_fit.rf.5$fits &lt;- with(CU_predict_fit.rf.5, ifelse(fits &gt; CU_opt, 1, 0)) </p>
+
+<p>CU_rf.5_confusion_test &lt;- confusionMatrix(model = rf.5, x = CU_test, y = CU_test$hit)
+CU_rf.5_confusion_validate &lt;- confusionMatrix(model = rf.5, x = CU_validate, y = CU_validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>CU_test_rows &lt;- test$row
+CU_validate_rows &lt;- validate$row
+CU_pred_data_emp_1 &lt;- ungroup(CU) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% CU_test_rows)</p>
+
+<p>CU_pred_data_emp &lt;- ungroup(CU) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% CU_validate_rows) %&gt;%
+    rbind(CU_pred_data_emp_1)</p>
+
+<p>CU_out_of_training_rows &lt;- CU_pred_data_emp$row</p>
+
+<p>CU_rf.5_full_out_of_sample_data &lt;- ungroup(CU) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% CU_out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>CU_rf.5_full_out_of_sample_data_scaled &lt;- CU_rf.5_full_out_of_sample_data</p>
+
+<p>CU_rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (CU_rf.5_full_out_of_sample_data_scaled$hit_speed - CU_center_values[2]) / CU_scale_values[2]</p>
+
+<p>CU_rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (CU_rf.5_full_out_of_sample_data_scaled$hit_angle - CU_center_values[3]) / CU_scale_values[3]</p>
+
+<p>CU_rf.5.prob &lt;- predict(CU_rf.5, CU_rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>CU_rf.5_full_out_of_sample_data &lt;- cbind(filter(CU_rf.5_full_out_of_sample_data, row %in% CU_out_of_training_rows), CU_rf.5.prob)</p>
+
+<p>names(CU_rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;
+names(CU_rf.5_full_out_of_sample_data)</p>
+
+<p>CU_rf.5_full_out_of_sample_data_reduced &lt;- CU_rf.5_full_out_of_sample_data %&gt;%
+    select(hit_distance_sc, hit_angle, hit_speed, hit, fits)</p>
+
+<p>CU_rf.5_mean_table &lt;- CU_rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>CU_rf.5_full_out_of_sample_data$type &lt;- with(CU_rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>CU_rf.5_full_out_of_sample_data$hit_label &lt;- with(CU_rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>CU_rf.5_plot1 &lt;- ggplot(CU_rf.5_full_out_of_sample_data, aes(hit_angle, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>CU_rf.5_plot1</p>
+
+<p>CU_rf.5_plot2 &lt;- ggplot(CU_rf.5_full_out_of_sample_data, aes(hit_speed, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>CU_rf.5_plot2</p>
+
+<p>CU_rf.5_plot3 &lt;- ggplot(CU_rf.5_full_out_of_sample_data, aes(hit_angle, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Speed off the Bat\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>CU_rf.5_plot3</p>
+
+<p>CU_grid_plot_rf.5 &lt;- grid.arrange(CU_rf.5_plot1, CU_rf.5_plot2, CU_rf.5_plot3, ncol = 3)
+CU_grid_plot_rf.5</p>
+
+<p>#ggsave(&ldquo;grid_plot_rf.5.png&rdquo;, grid_plot_rf.5rf.5, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h2>predicted probabilities using rf.5</h2>
+
+<h1>create a data set that combines the test and validation sets</h1>
+
+<p>CU_test_rows &lt;- CU_test$row
+CU_validate_rows &lt;- CU_validate$row
+CU_pred_data_emp_1 &lt;- ungroup(CU) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% test_rows)</p>
+
+<p>CU_pred_data_emp &lt;- ungroup(CU) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% validate_rows) %&gt;%
+    rbind(CU_pred_data_emp_1)</p>
+
+<p>CU_out_of_training_rows &lt;- CU_pred_data_emp$row</p>
+
+<p>CU_pred_data_emp &lt;- ungroup(CU) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% CU_out_of_training_rows) %&gt;%
+    select(hit_angle, hit_speed, stand, fieldingTeam, home_team) %&gt;%
+    filter(complete.cases(.))</p>
+
+<h1>empirical data</h1>
+
+<p>CU_pred_data_emp_scaled &lt;- CU_pred_data_emp</p>
+
+<p>CU_pred_data_emp_scaled$hit_speed &lt;- (CU_pred_data_emp_scaled$hit_speed - CU_center_values[2]) / CU_scale_values[2]</p>
+
+<p>CU_pred_data_emp_scaled$hit_angle &lt;- (CU_pred_data_emp_scaled$hit_angle - CU_center_values[3]) / CU_scale_values[3]</p>
+
+<p>CU_pred_prob_hit &lt;- predict(CU_rf.5, CU_pred_data_emp_scaled, type = &ldquo;prob&rdquo;)[,2]
+CU_pred_prob_hit_fits &lt;- cbind(CU_pred_data_emp, CU_pred_prob_hit)</p>
+
+<p>CU_pred_prob_hit_fits[,c(1:2)] &lt;- CU_pred_prob_hit_fits[,c(1:2)] %&gt;%
+    round(.)</p>
+
+<p>CU_angle_speed_pred &lt;- CU_pred_prob_hit_fits %&gt;% ggplot(aes(hit_speed, hit_angle)) + geom_tile(aes(fill = CU_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(low = &ldquo;#006BA4&rdquo;, high = &ldquo;#C85200&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nPredicted Probability of a Hit Using Statcast Data (2016)\n&rdquo;) + theme_bp_grey()</p>
+
+<p>CU_angle_speed_pred</p>
+
+<p>####
+######################</p>
+
+<h1>Slider</h1>
+
+<p>SL$hit &lt;- with(SL, ifelse(grepl(&ldquo;Single&rdquo;, SL$events), 1,
+                                                    ifelse(grepl(&ldquo;Double&rdquo;, SL$events), 1,
+                                                                 ifelse(grepl(&ldquo;Triple&rdquo;, SL$events), 1, 
+                                                                             ifelse(grepl(&ldquo;Home Run&rdquo;, SL$events), 1, 0))))) %&gt;% 
+    as.factor()</p>
+
+<h1>create a variable for the fielding team</h1>
+
+<p>SL$fieldingTeam &lt;- with(SL, ifelse(inning_topbot == &ldquo;bot&rdquo;, away_team, home_team)) %&gt;% 
+    as.factor()</p>
+
+<p>#F$hit_distance_sc[SL$hit_distance_sc == &ldquo;null&rdquo;] = NA
+#SL$hit_speed[SL$hit_speed == &ldquo;null&rdquo;] = NA
+#SL$hit_angle[SL$hit_angle == &ldquo;null&rdquo;] = NA</p>
+
+<h1>include row names for unique record identification</h1>
+
+<p>SL$row &lt;- row.names(SL) %&gt;% as.numeric()</p>
+
+<h1>recode stand and home_team as factors</h1>
+
+<p>SL$stand &lt;- as.factor(SL$stand)
+SL$home_team &lt;- as.factor(SL$home_team)</p>
+
+<p>SL$game_date &lt;- as.Date(SL$game_date)</p>
+
+<h1>subset</h1>
+
+<p>SL_working_data &lt;- ungroup(SL) %&gt;%
+    filter(game_date &lt;= &ldquo;2016-05-28&rdquo;) %&gt;%
+    select(hit_distance_sc:hit_angle, hc_x, hc_y, hit, stand, fieldingTeam, home_team,  row) %&gt;%
+    filter(!is.na(hit_distance_sc)) %&gt;%
+    filter(!is.na(hit_angle)) %&gt;% 
+    filter(!is.na(hit_speed)) %&gt;%
+    arrange(desc(hit))
+head(SL_working_data)
+str(ungroup(SL))
+table(SL_working_data$hit)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>SL_working_data &lt;- filter(SL_working_data, hc_x != 1, hc_y != 1)
+head(SL_working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>set.seed(42)
+SL_train &lt;- sample_frac(SL_working_data, .15, replace = FALSE)
+SL_split &lt;- setdiff(SL_working_data, SL_train)
+SL_test &lt;- sample_frac(SL_split, .50, replace = FALSE)
+SL_validate &lt;- setdiff(SL_split, SL_test)</p>
+
+<p>nrow(SL_train) + nrow(SL_test) + nrow(SL_validate) == nrow(SL_working_data)</p>
+
+<p>with(SL_train, table(hit)) %&gt;% prop.table()
+with(SL_test, table(hit)) %&gt;% prop.table()
+with(SL_validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(SL_train)</p>
+
+<p>SL_scaled_data &lt;- scale(SL_train[,c(1:5)])
+SL_scale_values &lt;- attr(SL_scaled_data, &#39;scaled:scale&#39;)
+SL_scale_values</p>
+
+<p>SL_center_values &lt;- attr(SL_scaled_data, &#39;scaled:center&#39;)
+SL_center_values</p>
+
+<p>SL_train &lt;- cbind(SL_scaled_data, select(SL_train, hit:row))</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>SL_levels_home_team &lt;- levels(SL_train$home_team)
+SL_levels_stand &lt;- levels(SL_train$stand)
+SL_levels_fieldingTeam &lt;- levels(SL_train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+#levels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>SL_test$hit_distance_sc &lt;- (SL_test$hit_distance_sc - SL_center_values[1]) / SL_scale_values[1]</p>
+
+<p>SL_test$hit_speed &lt;- (SL_test$hit_speed - SL_center_values[2]) / SL_scale_values[2]</p>
+
+<p>SL_test$hit_angle &lt;- (SL_test$hit_angle - SL_center_values[3]) / SL_scale_values[3]</p>
+
+<p>SL_test$hc_x &lt;- (SL_test$hc_x - SL_center_values[4]) / SL_scale_values[4]</p>
+
+<p>SL_test$hc_y &lt;- (SL_test$hc_y - SL_center_values[5]) / SL_scale_values[5]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>SL_validate$hit_distance_sc &lt;- (SL_validate$hit_distance_sc - SL_center_values[1]) / SL_scale_values[1]</p>
+
+<p>SL_validate$hit_speed &lt;- (SL_validate$hit_speed - SL_center_values[2]) / SL_scale_values[2]</p>
+
+<p>SL_validate$hit_angle &lt;- (SL_validate$hit_angle - SL_center_values[3]) / SL_scale_values[3]</p>
+
+<p>SL_validate$hc_x &lt;- (SL_validate$hc_x - SL_center_values[4]) / SL_scale_values[4]</p>
+
+<p>SL_validate$hc_y &lt;- (SL_validate$hc_y - SL_center_values[5]) / SL_scale_values[5]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(SL_train)</p>
+
+<p>set.seed(42)
+SL_rf.1 &lt;- randomForest(as.factor(hit) ~ ., data = select(SL_train, -row), ntree = 501, importance = TRUE)</p>
+
+<p>print(SL_rf.1)</p>
+
+<p>plot(SL_rf.1)</p>
+
+<p>varImpPlot(SL_rf.1)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, stand, fielding team and park</h1>
+
+<p>set.seed(42)
+SL_rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(SL_train, -row, -hit_distance_sc, -hc_y, -hc_x), importance = TRUE)</p>
+
+<p>print(SL_rf.5)</p>
+
+<p>plot(SL_rf.5)</p>
+
+<p>varImpPlot(SL_rf.5)</p>
+
+<p>SL_predict_fit.rf.5 &lt;- data.frame(fits = predict(SL_rf.5, SL_test, type = &ldquo;prob&rdquo;)[,2], actuals = SL_test$hit)</p>
+
+<p>SL_pred.rf.5 &lt;- prediction(SL_predict_fit.rf.5$fits, SL_predict_fit.rf.5$actuals)</p>
+
+<p>SL_roc.pred.rf.5 &lt;- performance(SL_pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)</p>
+
+<p>plot(SL_roc.pred.rf.5)
+abline(a = 0, b = 1)
+SL_opt &lt;- opt.cut(SL_roc.pred.rf.5, SL_pred.rf.5)
+SL_opt
+SL_opt &lt;- SL_opt[3]
+SL_predict_fit.rf.5$fits &lt;- with(SL_predict_fit.rf.5, ifelse(fits &gt; SL_opt, 1, 0)) </p>
+
+<p>SL_rf.5_confusion_test &lt;- confusionMatrix(model = rf.5, x = SL_test, y = SL_test$hit)
+SL_rf.5_confusion_validate &lt;- confusionMatrix(model = rf.5, x = SL_validate, y = SL_validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>SL_test_rows &lt;- SL_test$row
+SL_validate_rows &lt;- SL_validate$row
+SL_pred_data_emp_1 &lt;- ungroup(SL) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% SL_test_rows)</p>
+
+<p>SL_pred_data_emp &lt;- ungroup(SL) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% SL_validate_rows) %&gt;%
+    rbind(SL_pred_data_emp_1)</p>
+
+<p>SL_out_of_training_rows &lt;- SL_pred_data_emp$row</p>
+
+<p>SL_rf.5_full_out_of_sample_data &lt;- ungroup(SL) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% SL_out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>SL_rf.5_full_out_of_sample_data_scaled &lt;- SL_rf.5_full_out_of_sample_data</p>
+
+<p>SL_rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (SL_rf.5_full_out_of_sample_data_scaled$hit_speed - SL_center_values[2]) / SL_scale_values[2]</p>
+
+<p>SL_rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (SL_rf.5_full_out_of_sample_data_scaled$hit_angle - SL_center_values[3]) / SL_scale_values[3]</p>
+
+<p>SL_rf.5.prob &lt;- predict(SL_rf.5, SL_rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>SL_rf.5_full_out_of_sample_data &lt;- cbind(filter(SL_rf.5_full_out_of_sample_data, row %in% SL_out_of_training_rows), SL_rf.5.prob)</p>
+
+<p>names(SL_rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;
+names(SL_rf.5_full_out_of_sample_data)</p>
+
+<p>SL_rf.5_full_out_of_sample_data_reduced &lt;- SL_rf.5_full_out_of_sample_data %&gt;%
+    select(hit_distance_sc, hit_angle, hit_speed, hit, fits)</p>
+
+<p>SL_rf.5_mean_table &lt;- SL_rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>SL_rf.5_full_out_of_sample_data$type &lt;- with(SL_rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>SL_rf.5_full_out_of_sample_data$hit_label &lt;- with(SL_rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>SL_rf.5_plot1 &lt;- ggplot(SL_rf.5_full_out_of_sample_data, aes(hit_angle, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>SL_rf.5_plot1</p>
+
+<p>SL_rf.5_plot2 &lt;- ggplot(SL_rf.5_full_out_of_sample_data, aes(hit_speed, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>SL_rf.5_plot2</p>
+
+<p>SL_rf.5_plot3 &lt;- ggplot(SL_rf.5_full_out_of_sample_data, aes(hit_angle, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Speed off the Bat\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>SL_rf.5_plot3</p>
+
+<p>SL_grid_plot_rf.5 &lt;- grid.arrange(SL_rf.5_plot1, SL_rf.5_plot2, SL_rf.5_plot3, ncol = 3)
+SL_grid_plot_rf.5</p>
+
+<p>#ggsave(&ldquo;grid_plot_rf.5.png&rdquo;, grid_plot_rf.5rf.5, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h2>predicted probabilities using rf.5</h2>
+
+<h1>create a data set that combines the test and validation sets</h1>
+
+<p>SL_test_rows &lt;- SL_test$row
+SL_validate_rows &lt;- SL_validate$row
+SL_pred_data_emp_1 &lt;- ungroup(SL) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% test_rows)</p>
+
+<p>SL_pred_data_emp &lt;- ungroup(SL) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% validate_rows) %&gt;%
+    rbind(SL_pred_data_emp_1)</p>
+
+<p>SL_out_of_training_rows &lt;- SL_pred_data_emp$row</p>
+
+<p>SL_pred_data_emp &lt;- ungroup(SL) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% SL_out_of_training_rows) %&gt;%
+    select(hit_angle, hit_speed, stand, fieldingTeam, home_team) %&gt;%
+    filter(complete.cases(.))</p>
+
+<h1>empirical data</h1>
+
+<p>SL_pred_data_emp_scaled &lt;- SL_pred_data_emp</p>
+
+<p>SL_pred_data_emp_scaled$hit_speed &lt;- (SL_pred_data_emp_scaled$hit_speed - SL_center_values[2]) / SL_scale_values[2]</p>
+
+<p>SL_pred_data_emp_scaled$hit_angle &lt;- (SL_pred_data_emp_scaled$hit_angle - SL_center_values[3]) / SL_scale_values[3]</p>
+
+<p>SL_pred_prob_hit &lt;- predict(SL_rf.5, SL_pred_data_emp_scaled, type = &ldquo;prob&rdquo;)[,2]
+SL_pred_prob_hit_fits &lt;- cbind(SL_pred_data_emp, SL_pred_prob_hit)</p>
+
+<p>SL_pred_prob_hit_fits[,c(1:2)] &lt;- SL_pred_prob_hit_fits[,c(1:2)] %&gt;%
+    round(.)</p>
+
+<p>SL_angle_speed_pred &lt;- SL_pred_prob_hit_fits %&gt;% ggplot(aes(hit_speed, hit_angle)) + geom_tile(aes(fill = SL_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(low = &ldquo;#006BA4&rdquo;, high = &ldquo;#C85200&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nPredicted Probability of a Hit Using Statcast Data (2016)\n&rdquo;) + theme_bp_grey()</p>
+
+<p>SL_angle_speed_pred</p>
+
+<p>####
+##################</p>
+
+<h1>FT</h1>
+
+<p>FT$hit &lt;- with(FT, ifelse(grepl(&ldquo;Single&rdquo;, FT$events), 1,
+                                                    ifelse(grepl(&ldquo;Double&rdquo;, FT$events), 1,
+                                                                 ifelse(grepl(&ldquo;Triple&rdquo;, FT$events), 1, 
+                                                                             ifelse(grepl(&ldquo;Home Run&rdquo;, FT$events), 1, 0))))) %&gt;% 
+    as.factor()</p>
+
+<h1>create a variable for the fielding team</h1>
+
+<p>FT$fieldingTeam &lt;- with(FT, ifelse(inning_topbot == &ldquo;bot&rdquo;, away_team, home_team)) %&gt;% 
+    as.factor()</p>
+
+<p>#F$hit_distance_sc[FT$hit_distance_sc == &ldquo;null&rdquo;] = NA
+#FT$hit_speed[FT$hit_speed == &ldquo;null&rdquo;] = NA
+#FT$hit_angle[FT$hit_angle == &ldquo;null&rdquo;] = NA</p>
+
+<h1>include row names for unique record identification</h1>
+
+<p>FT$row &lt;- row.names(FT) %&gt;% as.numeric()</p>
+
+<h1>recode stand and home_team as factors</h1>
+
+<p>FT$stand &lt;- as.factor(FT$stand)
+FT$home_team &lt;- as.factor(FT$home_team)</p>
+
+<p>FT$game_date &lt;- as.Date(FT$game_date)</p>
+
+<h1>subset</h1>
+
+<p>FT_working_data &lt;- ungroup(FT) %&gt;%
+    filter(game_date &lt;= &ldquo;2016-05-28&rdquo;) %&gt;%
+    select(hit_distance_sc:hit_angle, hc_x, hc_y, hit, stand, fieldingTeam, home_team,  row) %&gt;%
+    filter(!is.na(hit_distance_sc)) %&gt;%
+    filter(!is.na(hit_angle)) %&gt;% 
+    filter(!is.na(hit_speed)) %&gt;%
+    arrange(desc(hit))
+head(FT_working_data)
+str(ungroup(FT))
+table(FT_working_data$hit)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>FT_working_data &lt;- filter(FT_working_data, hc_x != 1, hc_y != 1)
+head(FT_working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>set.seed(42)
+FT_train &lt;- sample_frac(FT_working_data, .15, replace = FALSE)
+FT_split &lt;- setdiff(FT_working_data, FT_train)
+FT_test &lt;- sample_frac(FT_split, .50, replace = FALSE)
+FT_validate &lt;- setdiff(FT_split, FT_test)</p>
+
+<p>nrow(FT_train) + nrow(FT_test) + nrow(FT_validate) == nrow(FT_working_data)</p>
+
+<p>with(FT_train, table(hit)) %&gt;% prop.table()
+with(FT_test, table(hit)) %&gt;% prop.table()
+with(FT_validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(FT_train)</p>
+
+<p>FT_scaled_data &lt;- scale(FT_train[,c(1:5)])
+FT_scale_values &lt;- attr(FT_scaled_data, &#39;scaled:scale&#39;)
+FT_scale_values</p>
+
+<p>FT_center_values &lt;- attr(FT_scaled_data, &#39;scaled:center&#39;)
+FT_center_values</p>
+
+<p>FT_train &lt;- cbind(FT_scaled_data, select(FT_train, hit:row))</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>FT_levels_home_team &lt;- levels(FT_train$home_team)
+FT_levels_stand &lt;- levels(FT_train$stand)
+FT_levels_fieldingTeam &lt;- levels(FT_train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+#levels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>FT_test$hit_distance_sc &lt;- (FT_test$hit_distance_sc - FT_center_values[1]) / FT_scale_values[1]</p>
+
+<p>FT_test$hit_speed &lt;- (FT_test$hit_speed - FT_center_values[2]) / FT_scale_values[2]</p>
+
+<p>FT_test$hit_angle &lt;- (FT_test$hit_angle - FT_center_values[3]) / FT_scale_values[3]</p>
+
+<p>FT_test$hc_x &lt;- (FT_test$hc_x - FT_center_values[4]) / FT_scale_values[4]</p>
+
+<p>FT_test$hc_y &lt;- (FT_test$hc_y - FT_center_values[5]) / FT_scale_values[5]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>FT_validate$hit_distance_sc &lt;- (FT_validate$hit_distance_sc - FT_center_values[1]) / FT_scale_values[1]</p>
+
+<p>FT_validate$hit_speed &lt;- (FT_validate$hit_speed - FT_center_values[2]) / FT_scale_values[2]</p>
+
+<p>FT_validate$hit_angle &lt;- (FT_validate$hit_angle - FT_center_values[3]) / FT_scale_values[3]</p>
+
+<p>FT_validate$hc_x &lt;- (FT_validate$hc_x - FT_center_values[4]) / FT_scale_values[4]</p>
+
+<p>FT_validate$hc_y &lt;- (FT_validate$hc_y - FT_center_values[5]) / FT_scale_values[5]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(FT_train)</p>
+
+<p>set.seed(42)
+FT_rf.1 &lt;- randomForest(as.factor(hit) ~ ., data = select(FT_train, -row), ntree = 501, importance = TRUE)</p>
+
+<p>print(FT_rf.1)</p>
+
+<p>plot(FT_rf.1)</p>
+
+<p>varImpPlot(FT_rf.1)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, stand, fielding team and park</h1>
+
+<p>set.seed(42)
+FT_rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(FT_train, -row, -hit_distance_sc, -hc_y, -hc_x), importance = TRUE)</p>
+
+<p>print(FT_rf.5)</p>
+
+<p>plot(FT_rf.5)</p>
+
+<p>varImpPlot(FT_rf.5)</p>
+
+<p>FT_predict_fit.rf.5 &lt;- data.frame(fits = predict(FT_rf.5, FT_test, type = &ldquo;prob&rdquo;)[,2], actuals = FT_test$hit)</p>
+
+<p>FT_pred.rf.5 &lt;- prediction(FT_predict_fit.rf.5$fits, FT_predict_fit.rf.5$actuals)</p>
+
+<p>FT_roc.pred.rf.5 &lt;- performance(FT_pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)</p>
+
+<p>plot(FT_roc.pred.rf.5)
+abline(a = 0, b = 1)
+FT_opt &lt;- opt.cut(FT_roc.pred.rf.5, FT_pred.rf.5)
+FT_opt
+FT_opt &lt;- FT_opt[3]
+FT_predict_fit.rf.5$fits &lt;- with(FT_predict_fit.rf.5, ifelse(fits &gt; FT_opt, 1, 0)) </p>
+
+<p>FT_rf.5_confusion_test &lt;- confusionMatrix(model = rf.5, x = FT_test, y = FT_test$hit)
+FT_rf.5_confusion_validate &lt;- confusionMatrix(model = rf.5, x = FT_validate, y = FT_validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>FT_test_rows &lt;- FT_test$row
+FT_validate_rows &lt;- FT_validate$row
+FT_pred_data_emp_1 &lt;- ungroup(FT) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FT_test_rows)</p>
+
+<p>FT_pred_data_emp &lt;- ungroup(FT) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FT_validate_rows) %&gt;%
+    rbind(FT_pred_data_emp_1)</p>
+
+<p>FT_out_of_training_rows &lt;- FT_pred_data_emp$row</p>
+
+<p>FT_rf.5_full_out_of_sample_data &lt;- ungroup(FT) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FT_out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>FT_rf.5_full_out_of_sample_data_scaled &lt;- FT_rf.5_full_out_of_sample_data</p>
+
+<p>FT_rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (FT_rf.5_full_out_of_sample_data_scaled$hit_speed - FT_center_values[2]) / FT_scale_values[2]</p>
+
+<p>FT_rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (FT_rf.5_full_out_of_sample_data_scaled$hit_angle - FT_center_values[3]) / FT_scale_values[3]</p>
+
+<p>FT_rf.5.prob &lt;- predict(FT_rf.5, FT_rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>FT_rf.5_full_out_of_sample_data &lt;- cbind(filter(FT_rf.5_full_out_of_sample_data, row %in% FT_out_of_training_rows), FT_rf.5.prob)</p>
+
+<p>names(FT_rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;
+names(FT_rf.5_full_out_of_sample_data)</p>
+
+<p>FT_rf.5_full_out_of_sample_data_reduced &lt;- FT_rf.5_full_out_of_sample_data %&gt;%
+    select(hit_distance_sc, hit_angle, hit_speed, hit, fits)</p>
+
+<p>FT_rf.5_mean_table &lt;- FT_rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>FT_rf.5_full_out_of_sample_data$type &lt;- with(FT_rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>FT_rf.5_full_out_of_sample_data$hit_label &lt;- with(FT_rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>FT_rf.5_plot1 &lt;- ggplot(FT_rf.5_full_out_of_sample_data, aes(hit_angle, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>FT_rf.5_plot1</p>
+
+<p>FT_rf.5_plot2 &lt;- ggplot(FT_rf.5_full_out_of_sample_data, aes(hit_speed, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>FT_rf.5_plot2</p>
+
+<p>FT_rf.5_plot3 &lt;- ggplot(FT_rf.5_full_out_of_sample_data, aes(hit_angle, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Speed off the Bat\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>FT_rf.5_plot3</p>
+
+<p>FT_grid_plot_rf.5 &lt;- grid.arrange(FT_rf.5_plot1, FT_rf.5_plot2, FT_rf.5_plot3, ncol = 3)
+FT_grid_plot_rf.5</p>
+
+<p>#ggsave(&ldquo;grid_plot_rf.5.png&rdquo;, grid_plot_rf.5rf.5, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h2>predicted probabilities using rf.5</h2>
+
+<h1>create a data set that combines the test and validation sets</h1>
+
+<p>FT_test_rows &lt;- FT_test$row
+FT_validate_rows &lt;- FT_validate$row
+FT_pred_data_emp_1 &lt;- ungroup(FT) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% test_rows)</p>
+
+<p>FT_pred_data_emp &lt;- ungroup(FT) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% validate_rows) %&gt;%
+    rbind(FT_pred_data_emp_1)</p>
+
+<p>FT_out_of_training_rows &lt;- FT_pred_data_emp$row</p>
+
+<p>FT_pred_data_emp &lt;- ungroup(FT) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FT_out_of_training_rows) %&gt;%
+    select(hit_angle, hit_speed, stand, fieldingTeam, home_team) %&gt;%
+    filter(complete.cases(.))</p>
+
+<h1>empirical data</h1>
+
+<p>FT_pred_data_emp_scaled &lt;- FT_pred_data_emp</p>
+
+<p>FT_pred_data_emp_scaled$hit_speed &lt;- (FT_pred_data_emp_scaled$hit_speed - FT_center_values[2]) / FT_scale_values[2]</p>
+
+<p>FT_pred_data_emp_scaled$hit_angle &lt;- (FT_pred_data_emp_scaled$hit_angle - FT_center_values[3]) / FT_scale_values[3]</p>
+
+<p>FT_pred_prob_hit &lt;- predict(FT_rf.5, FT_pred_data_emp_scaled, type = &ldquo;prob&rdquo;)[,2]
+FT_pred_prob_hit_fits &lt;- cbind(FT_pred_data_emp, FT_pred_prob_hit)</p>
+
+<p>FT_pred_prob_hit_fits[,c(1:2)] &lt;- FT_pred_prob_hit_fits[,c(1:2)] %&gt;%
+    round(.)</p>
+
+<p>FT_angle_speed_pred &lt;- FT_pred_prob_hit_fits %&gt;% ggplot(aes(hit_speed, hit_angle)) + geom_tile(aes(fill = FT_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(low = &ldquo;#006BA4&rdquo;, high = &ldquo;#C85200&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nPredicted Probability of a Hit Using Statcast Data (2016)\n&rdquo;) + theme_bp_grey()</p>
+
+<p>FT_angle_speed_pred
+################</p>
+
+<h1>Changeup</h1>
+
+<p>CH$hit &lt;- with(CH, ifelse(grepl(&ldquo;Single&rdquo;, CH$events), 1,
+                                                    ifelse(grepl(&ldquo;Double&rdquo;, CH$events), 1,
+                                                                 ifelse(grepl(&ldquo;Triple&rdquo;, CH$events), 1, 
+                                                                             ifelse(grepl(&ldquo;Home Run&rdquo;, CH$events), 1, 0))))) %&gt;% 
+    as.factor()</p>
+
+<h1>create a variable for the fielding team</h1>
+
+<p>CH$fieldingTeam &lt;- with(CH, ifelse(inning_topbot == &ldquo;bot&rdquo;, away_team, home_team)) %&gt;% 
+    as.factor()</p>
+
+<p>#F$hit_distance_sc[CH$hit_distance_sc == &ldquo;null&rdquo;] = NA
+#CH$hit_speed[CH$hit_speed == &ldquo;null&rdquo;] = NA
+#CH$hit_angle[CH$hit_angle == &ldquo;null&rdquo;] = NA</p>
+
+<h1>include row names for unique record identification</h1>
+
+<p>CH$row &lt;- row.names(CH) %&gt;% as.numeric()</p>
+
+<h1>recode stand and home_team as factors</h1>
+
+<p>CH$stand &lt;- as.factor(CH$stand)
+CH$home_team &lt;- as.factor(CH$home_team)</p>
+
+<p>CH$game_date &lt;- as.Date(CH$game_date)</p>
+
+<h1>subset</h1>
+
+<p>CH_working_data &lt;- ungroup(CH) %&gt;%
+    filter(game_date &lt;= &ldquo;2016-05-28&rdquo;) %&gt;%
+    select(hit_distance_sc:hit_angle, hc_x, hc_y, hit, stand, fieldingTeam, home_team,  row) %&gt;%
+    filter(!is.na(hit_distance_sc)) %&gt;%
+    filter(!is.na(hit_angle)) %&gt;% 
+    filter(!is.na(hit_speed)) %&gt;%
+    arrange(desc(hit))
+head(CH_working_data)
+str(ungroup(CH))
+table(CH_working_data$hit)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>CH_working_data &lt;- filter(CH_working_data, hc_x != 1, hc_y != 1)
+head(CH_working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>set.seed(42)
+CH_train &lt;- sample_frac(CH_working_data, .15, replace = FALSE)
+CH_split &lt;- setdiff(CH_working_data, CH_train)
+CH_test &lt;- sample_frac(CH_split, .50, replace = FALSE)
+CH_validate &lt;- setdiff(CH_split, CH_test)</p>
+
+<p>nrow(CH_train) + nrow(CH_test) + nrow(CH_validate) == nrow(CH_working_data)</p>
+
+<p>with(CH_train, table(hit)) %&gt;% prop.table()
+with(CH_test, table(hit)) %&gt;% prop.table()
+with(CH_validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(CH_train)</p>
+
+<p>CH_scaled_data &lt;- scale(CH_train[,c(1:5)])
+CH_scale_values &lt;- attr(CH_scaled_data, &#39;scaled:scale&#39;)
+CH_scale_values</p>
+
+<p>CH_center_values &lt;- attr(CH_scaled_data, &#39;scaled:center&#39;)
+CH_center_values</p>
+
+<p>CH_train &lt;- cbind(CH_scaled_data, select(CH_train, hit:row))</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>CH_levels_home_team &lt;- levels(CH_train$home_team)
+CH_levels_stand &lt;- levels(CH_train$stand)
+CH_levels_fieldingTeam &lt;- levels(CH_train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+#levels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>CH_test$hit_distance_sc &lt;- (CH_test$hit_distance_sc - CH_center_values[1]) / CH_scale_values[1]</p>
+
+<p>CH_test$hit_speed &lt;- (CH_test$hit_speed - CH_center_values[2]) / CH_scale_values[2]</p>
+
+<p>CH_test$hit_angle &lt;- (CH_test$hit_angle - CH_center_values[3]) / CH_scale_values[3]</p>
+
+<p>CH_test$hc_x &lt;- (CH_test$hc_x - CH_center_values[4]) / CH_scale_values[4]</p>
+
+<p>CH_test$hc_y &lt;- (CH_test$hc_y - CH_center_values[5]) / CH_scale_values[5]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>CH_validate$hit_distance_sc &lt;- (CH_validate$hit_distance_sc - CH_center_values[1]) / CH_scale_values[1]</p>
+
+<p>CH_validate$hit_speed &lt;- (CH_validate$hit_speed - CH_center_values[2]) / CH_scale_values[2]</p>
+
+<p>CH_validate$hit_angle &lt;- (CH_validate$hit_angle - CH_center_values[3]) / CH_scale_values[3]</p>
+
+<p>CH_validate$hc_x &lt;- (CH_validate$hc_x - CH_center_values[4]) / CH_scale_values[4]</p>
+
+<p>CH_validate$hc_y &lt;- (CH_validate$hc_y - CH_center_values[5]) / CH_scale_values[5]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(CH_train)</p>
+
+<p>set.seed(42)
+CH_rf.1 &lt;- randomForest(as.factor(hit) ~ ., data = select(CH_train, -row), ntree = 501, importance = TRUE)</p>
+
+<p>print(CH_rf.1)</p>
+
+<p>plot(CH_rf.1)</p>
+
+<p>varImpPlot(CH_rf.1)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, stand, fielding team and park</h1>
+
+<p>set.seed(42)
+CH_rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(CH_train, -row, -hit_distance_sc, -hc_y, -hc_x), importance = TRUE)</p>
+
+<p>print(CH_rf.5)</p>
+
+<p>plot(CH_rf.5)</p>
+
+<p>varImpPlot(CH_rf.5)</p>
+
+<p>CH_predict_fit.rf.5 &lt;- data.frame(fits = predict(CH_rf.5, CH_test, type = &ldquo;prob&rdquo;)[,2], actuals = CH_test$hit)</p>
+
+<p>CH_pred.rf.5 &lt;- prediction(CH_predict_fit.rf.5$fits, CH_predict_fit.rf.5$actuals)</p>
+
+<p>CH_roc.pred.rf.5 &lt;- performance(CH_pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)</p>
+
+<p>plot(CH_roc.pred.rf.5)
+abline(a = 0, b = 1)
+CH_opt &lt;- opt.cut(CH_roc.pred.rf.5, CH_pred.rf.5)
+CH_opt
+CH_opt &lt;- CH_opt[3]
+CH_predict_fit.rf.5$fits &lt;- with(CH_predict_fit.rf.5, ifelse(fits &gt; CH_opt, 1, 0)) </p>
+
+<p>CH_rf.5_confusion_test &lt;- confusionMatrix(model = rf.5, x = CH_test, y = CH_test$hit)
+CH_rf.5_confusion_validate &lt;- confusionMatrix(model = rf.5, x = CH_validate, y = CH_validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>CH_test_rows &lt;- CH_test$row
+CH_validate_rows &lt;- CH_validate$row
+CH_pred_data_emp_1 &lt;- ungroup(CH) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% CH_test_rows)</p>
+
+<p>CH_pred_data_emp &lt;- ungroup(CH) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% CH_validate_rows) %&gt;%
+    rbind(CH_pred_data_emp_1)</p>
+
+<p>CH_out_of_training_rows &lt;- CH_pred_data_emp$row</p>
+
+<p>CH_rf.5_full_out_of_sample_data &lt;- ungroup(CH) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% CH_out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>CH_rf.5_full_out_of_sample_data_scaled &lt;- CH_rf.5_full_out_of_sample_data</p>
+
+<p>CH_rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (CH_rf.5_full_out_of_sample_data_scaled$hit_speed - CH_center_values[2]) / CH_scale_values[2]</p>
+
+<p>CH_rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (CH_rf.5_full_out_of_sample_data_scaled$hit_angle - CH_center_values[3]) / CH_scale_values[3]</p>
+
+<p>CH_rf.5.prob &lt;- predict(CH_rf.5, CH_rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>CH_rf.5_full_out_of_sample_data &lt;- cbind(filter(CH_rf.5_full_out_of_sample_data, row %in% CH_out_of_training_rows), CH_rf.5.prob)</p>
+
+<p>names(CH_rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;
+names(CH_rf.5_full_out_of_sample_data)</p>
+
+<p>CH_rf.5_full_out_of_sample_data_reduced &lt;- CH_rf.5_full_out_of_sample_data %&gt;%
+    select(hit_distance_sc, hit_angle, hit_speed, hit, fits)</p>
+
+<p>CH_rf.5_mean_table &lt;- CH_rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>CH_rf.5_full_out_of_sample_data$type &lt;- with(CH_rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>CH_rf.5_full_out_of_sample_data$hit_label &lt;- with(CH_rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>CH_rf.5_plot1 &lt;- ggplot(CH_rf.5_full_out_of_sample_data, aes(hit_angle, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>CH_rf.5_plot1</p>
+
+<p>CH_rf.5_plot2 &lt;- ggplot(CH_rf.5_full_out_of_sample_data, aes(hit_speed, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>CH_rf.5_plot2</p>
+
+<p>CH_rf.5_plot3 &lt;- ggplot(CH_rf.5_full_out_of_sample_data, aes(hit_angle, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Speed off the Bat\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>CH_rf.5_plot3</p>
+
+<p>CH_grid_plot_rf.5 &lt;- grid.arrange(CH_rf.5_plot1, CH_rf.5_plot2, CH_rf.5_plot3, ncol = 3)
+CH_grid_plot_rf.5</p>
+
+<p>#ggsave(&ldquo;grid_plot_rf.5.png&rdquo;, grid_plot_rf.5rf.5, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h2>predicted probabilities using rf.5</h2>
+
+<h1>create a data set that combines the test and validation sets</h1>
+
+<p>CH_test_rows &lt;- CH_test$row
+CH_validate_rows &lt;- CH_validate$row
+CH_pred_data_emp_1 &lt;- ungroup(CH) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% test_rows)</p>
+
+<p>CH_pred_data_emp &lt;- ungroup(CH) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% validate_rows) %&gt;%
+    rbind(CH_pred_data_emp_1)</p>
+
+<p>CH_out_of_training_rows &lt;- CH_pred_data_emp$row</p>
+
+<p>CH_pred_data_emp &lt;- ungroup(CH) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% CH_out_of_training_rows) %&gt;%
+    select(hit_angle, hit_speed, stand, fieldingTeam, home_team) %&gt;%
+    filter(complete.cases(.))</p>
+
+<h1>empirical data</h1>
+
+<p>CH_pred_data_emp_scaled &lt;- CH_pred_data_emp</p>
+
+<p>CH_pred_data_emp_scaled$hit_speed &lt;- (CH_pred_data_emp_scaled$hit_speed - CH_center_values[2]) / CH_scale_values[2]</p>
+
+<p>CH_pred_data_emp_scaled$hit_angle &lt;- (CH_pred_data_emp_scaled$hit_angle - CH_center_values[3]) / CH_scale_values[3]</p>
+
+<p>CH_pred_prob_hit &lt;- predict(CH_rf.5, CH_pred_data_emp_scaled, type = &ldquo;prob&rdquo;)[,2]
+CH_pred_prob_hit_fits &lt;- cbind(CH_pred_data_emp, CH_pred_prob_hit)</p>
+
+<p>CH_pred_prob_hit_fits[,c(1:2)] &lt;- CH_pred_prob_hit_fits[,c(1:2)] %&gt;%
+    round(.)</p>
+
+<p>CH_angle_speed_pred &lt;- CH_pred_prob_hit_fits %&gt;% ggplot(aes(hit_speed, hit_angle)) + geom_tile(aes(fill = CH_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(low = &ldquo;#006BA4&rdquo;, high = &ldquo;#C85200&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nPredicted Probability of a Hit Using Statcast Data (2016)\n&rdquo;) + theme_bp_grey()</p>
+
+<p>CH_angle_speed_pred</p>
+
+<p>#########</p>
+
+<h1>FC</h1>
+
+<p>FC$hit &lt;- with(FC, ifelse(grepl(&ldquo;Single&rdquo;, FC$events), 1,
+                                                    ifelse(grepl(&ldquo;Double&rdquo;, FC$events), 1,
+                                                                 ifelse(grepl(&ldquo;Triple&rdquo;, FC$events), 1, 
+                                                                             ifelse(grepl(&ldquo;Home Run&rdquo;, FC$events), 1, 0))))) %&gt;% 
+    as.factor()</p>
+
+<h1>create a variable for the fielding team</h1>
+
+<p>FC$fieldingTeam &lt;- with(FC, ifelse(inning_topbot == &ldquo;bot&rdquo;, away_team, home_team)) %&gt;% 
+    as.factor()</p>
+
+<p>#F$hit_distance_sc[FC$hit_distance_sc == &ldquo;null&rdquo;] = NA
+#FC$hit_speed[FC$hit_speed == &ldquo;null&rdquo;] = NA
+#FC$hit_angle[FC$hit_angle == &ldquo;null&rdquo;] = NA</p>
+
+<h1>include row names for unique record identification</h1>
+
+<p>FC$row &lt;- row.names(FC) %&gt;% as.numeric()</p>
+
+<h1>recode stand and home_team as factors</h1>
+
+<p>FC$stand &lt;- as.factor(FC$stand)
+FC$home_team &lt;- as.factor(FC$home_team)</p>
+
+<p>FC$game_date &lt;- as.Date(FC$game_date)</p>
+
+<h1>subset</h1>
+
+<p>FC_working_data &lt;- ungroup(FC) %&gt;%
+    filter(game_date &lt;= &ldquo;2016-05-28&rdquo;) %&gt;%
+    select(hit_distance_sc:hit_angle, hc_x, hc_y, hit, stand, fieldingTeam, home_team,  row) %&gt;%
+    filter(!is.na(hit_distance_sc)) %&gt;%
+    filter(!is.na(hit_angle)) %&gt;% 
+    filter(!is.na(hit_speed)) %&gt;%
+    arrange(desc(hit))
+head(FC_working_data)
+str(ungroup(FC))
+table(FC_working_data$hit)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>FC_working_data &lt;- filter(FC_working_data, hc_x != 1, hc_y != 1)
+head(FC_working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>set.seed(42)
+FC_train &lt;- sample_frac(FC_working_data, .15, replace = FALSE)
+FC_split &lt;- setdiff(FC_working_data, FC_train)
+FC_test &lt;- sample_frac(FC_split, .50, replace = FALSE)
+FC_validate &lt;- setdiff(FC_split, FC_test)</p>
+
+<p>nrow(FC_train) + nrow(FC_test) + nrow(FC_validate) == nrow(FC_working_data)</p>
+
+<p>with(FC_train, table(hit)) %&gt;% prop.table()
+with(FC_test, table(hit)) %&gt;% prop.table()
+with(FC_validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(FC_train)</p>
+
+<p>FC_scaled_data &lt;- scale(FC_train[,c(1:5)])
+FC_scale_values &lt;- attr(FC_scaled_data, &#39;scaled:scale&#39;)
+FC_scale_values</p>
+
+<p>FC_center_values &lt;- attr(FC_scaled_data, &#39;scaled:center&#39;)
+FC_center_values</p>
+
+<p>FC_train &lt;- cbind(FC_scaled_data, select(FC_train, hit:row))</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>FC_levels_home_team &lt;- levels(FC_train$home_team)
+FC_levels_stand &lt;- levels(FC_train$stand)
+FC_levels_fieldingTeam &lt;- levels(FC_train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+#levels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>FC_test$hit_distance_sc &lt;- (FC_test$hit_distance_sc - FC_center_values[1]) / FC_scale_values[1]</p>
+
+<p>FC_test$hit_speed &lt;- (FC_test$hit_speed - FC_center_values[2]) / FC_scale_values[2]</p>
+
+<p>FC_test$hit_angle &lt;- (FC_test$hit_angle - FC_center_values[3]) / FC_scale_values[3]</p>
+
+<p>FC_test$hc_x &lt;- (FC_test$hc_x - FC_center_values[4]) / FC_scale_values[4]</p>
+
+<p>FC_test$hc_y &lt;- (FC_test$hc_y - FC_center_values[5]) / FC_scale_values[5]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>FC_validate$hit_distance_sc &lt;- (FC_validate$hit_distance_sc - FC_center_values[1]) / FC_scale_values[1]</p>
+
+<p>FC_validate$hit_speed &lt;- (FC_validate$hit_speed - FC_center_values[2]) / FC_scale_values[2]</p>
+
+<p>FC_validate$hit_angle &lt;- (FC_validate$hit_angle - FC_center_values[3]) / FC_scale_values[3]</p>
+
+<p>FC_validate$hc_x &lt;- (FC_validate$hc_x - FC_center_values[4]) / FC_scale_values[4]</p>
+
+<p>FC_validate$hc_y &lt;- (FC_validate$hc_y - FC_center_values[5]) / FC_scale_values[5]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(FC_train)</p>
+
+<p>set.seed(42)
+FC_rf.1 &lt;- randomForest(as.factor(hit) ~ ., data = select(FC_train, -row), ntree = 501, importance = TRUE)</p>
+
+<p>print(FC_rf.1)</p>
+
+<p>plot(FC_rf.1)</p>
+
+<p>varImpPlot(FC_rf.1)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, stand, fielding team and park</h1>
+
+<p>set.seed(42)
+FC_rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(FC_train, -row, -hit_distance_sc, -hc_y, -hc_x), importance = TRUE)</p>
+
+<p>print(FC_rf.5)</p>
+
+<p>plot(FC_rf.5)</p>
+
+<p>varImpPlot(FC_rf.5)</p>
+
+<p>FC_predict_fit.rf.5 &lt;- data.frame(fits = predict(FC_rf.5, FC_test, type = &ldquo;prob&rdquo;)[,2], actuals = FC_test$hit)</p>
+
+<p>FC_pred.rf.5 &lt;- prediction(FC_predict_fit.rf.5$fits, FC_predict_fit.rf.5$actuals)</p>
+
+<p>FC_roc.pred.rf.5 &lt;- performance(FC_pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)</p>
+
+<p>plot(FC_roc.pred.rf.5)
+abline(a = 0, b = 1)
+FC_opt &lt;- opt.cut(FC_roc.pred.rf.5, FC_pred.rf.5)
+FC_opt
+FC_opt &lt;- FC_opt[3]
+FC_predict_fit.rf.5$fits &lt;- with(FC_predict_fit.rf.5, ifelse(fits &gt; FC_opt, 1, 0)) </p>
+
+<p>FC_rf.5_confusion_test &lt;- confusionMatrix(model = rf.5, x = FC_test, y = FC_test$hit)
+FC_rf.5_confusion_validate &lt;- confusionMatrix(model = rf.5, x = FC_validate, y = FC_validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>FC_test_rows &lt;- FC_test$row
+FC_validate_rows &lt;- FC_validate$row
+FC_pred_data_emp_1 &lt;- ungroup(FC) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FC_test_rows)</p>
+
+<p>FC_pred_data_emp &lt;- ungroup(FC) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FC_validate_rows) %&gt;%
+    rbind(FC_pred_data_emp_1)</p>
+
+<p>FC_out_of_training_rows &lt;- FC_pred_data_emp$row</p>
+
+<p>FC_rf.5_full_out_of_sample_data &lt;- ungroup(FC) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FC_out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>FC_rf.5_full_out_of_sample_data_scaled &lt;- FC_rf.5_full_out_of_sample_data</p>
+
+<p>FC_rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (FC_rf.5_full_out_of_sample_data_scaled$hit_speed - FC_center_values[2]) / FC_scale_values[2]</p>
+
+<p>FC_rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (FC_rf.5_full_out_of_sample_data_scaled$hit_angle - FC_center_values[3]) / FC_scale_values[3]</p>
+
+<p>FC_rf.5.prob &lt;- predict(FC_rf.5, FC_rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>FC_rf.5_full_out_of_sample_data &lt;- cbind(filter(FC_rf.5_full_out_of_sample_data, row %in% FC_out_of_training_rows), FC_rf.5.prob)</p>
+
+<p>names(FC_rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;
+names(FC_rf.5_full_out_of_sample_data)</p>
+
+<p>FC_rf.5_full_out_of_sample_data_reduced &lt;- FC_rf.5_full_out_of_sample_data %&gt;%
+    select(hit_distance_sc, hit_angle, hit_speed, hit, fits)</p>
+
+<p>FC_rf.5_mean_table &lt;- FC_rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>FC_rf.5_full_out_of_sample_data$type &lt;- with(FC_rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>FC_rf.5_full_out_of_sample_data$hit_label &lt;- with(FC_rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>FC_rf.5_plot1 &lt;- ggplot(FC_rf.5_full_out_of_sample_data, aes(hit_angle, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>FC_rf.5_plot1</p>
+
+<p>FC_rf.5_plot2 &lt;- ggplot(FC_rf.5_full_out_of_sample_data, aes(hit_speed, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>FC_rf.5_plot2</p>
+
+<p>FC_rf.5_plot3 &lt;- ggplot(FC_rf.5_full_out_of_sample_data, aes(hit_angle, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Speed off the Bat\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>FC_rf.5_plot3</p>
+
+<p>FC_grid_plot_rf.5 &lt;- grid.arrange(FC_rf.5_plot1, FC_rf.5_plot2, FC_rf.5_plot3, ncol = 3)
+FC_grid_plot_rf.5</p>
+
+<p>#ggsave(&ldquo;grid_plot_rf.5.png&rdquo;, grid_plot_rf.5rf.5, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h2>predicted probabilities using rf.5</h2>
+
+<h1>create a data set that combines the test and validation sets</h1>
+
+<p>FC_test_rows &lt;- FC_test$row
+FC_validate_rows &lt;- FC_validate$row
+FC_pred_data_emp_1 &lt;- ungroup(FC) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% test_rows)</p>
+
+<p>FC_pred_data_emp &lt;- ungroup(FC) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% validate_rows) %&gt;%
+    rbind(FC_pred_data_emp_1)</p>
+
+<p>FC_out_of_training_rows &lt;- FC_pred_data_emp$row</p>
+
+<p>FC_pred_data_emp &lt;- ungroup(FC) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FC_out_of_training_rows) %&gt;%
+    select(hit_angle, hit_speed, stand, fieldingTeam, home_team) %&gt;%
+    filter(complete.cases(.))</p>
+
+<h1>empirical data</h1>
+
+<p>FC_pred_data_emp_scaled &lt;- FC_pred_data_emp</p>
+
+<p>FC_pred_data_emp_scaled$hit_speed &lt;- (FC_pred_data_emp_scaled$hit_speed - FC_center_values[2]) / FC_scale_values[2]</p>
+
+<p>FC_pred_data_emp_scaled$hit_angle &lt;- (FC_pred_data_emp_scaled$hit_angle - FC_center_values[3]) / FC_scale_values[3]</p>
+
+<p>FC_pred_prob_hit &lt;- predict(FC_rf.5, FC_pred_data_emp_scaled, type = &ldquo;prob&rdquo;)[,2]
+FC_pred_prob_hit_fits &lt;- cbind(FC_pred_data_emp, FC_pred_prob_hit)</p>
+
+<p>FC_pred_prob_hit_fits[,c(1:2)] &lt;- FC_pred_prob_hit_fits[,c(1:2)] %&gt;%
+    round(.)</p>
+
+<p>FC_angle_speed_pred &lt;- FC_pred_prob_hit_fits %&gt;% ggplot(aes(hit_speed, hit_angle)) + geom_tile(aes(fill = FC_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(low = &ldquo;#006BA4&rdquo;, high = &ldquo;#C85200&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nPredicted Probability of a Hit Using Statcast Data (2016)\n&rdquo;) + theme_bp_grey()</p>
+
+<p>FC_angle_speed_pred</p>
+
+<p>#######</p>
+
+<h3>FS</h3>
+
+<p>FS$hit &lt;- with(FS, ifelse(grepl(&ldquo;Single&rdquo;, FS$events), 1,
+                                                    ifelse(grepl(&ldquo;Double&rdquo;, FS$events), 1,
+                                                                 ifelse(grepl(&ldquo;Triple&rdquo;, FS$events), 1, 
+                                                                             ifelse(grepl(&ldquo;Home Run&rdquo;, FS$events), 1, 0))))) %&gt;% 
+    as.factor()</p>
+
+<h1>create a variable for the fielding team</h1>
+
+<p>FS$fieldingTeam &lt;- with(FS, ifelse(inning_topbot == &ldquo;bot&rdquo;, away_team, home_team)) %&gt;% 
+    as.factor()</p>
+
+<p>#F$hit_distance_sc[FS$hit_distance_sc == &ldquo;null&rdquo;] = NA
+#FS$hit_speed[FS$hit_speed == &ldquo;null&rdquo;] = NA
+#FS$hit_angle[FS$hit_angle == &ldquo;null&rdquo;] = NA</p>
+
+<h1>include row names for unique record identification</h1>
+
+<p>FS$row &lt;- row.names(FS) %&gt;% as.numeric()</p>
+
+<h1>recode stand and home_team as factors</h1>
+
+<p>FS$stand &lt;- as.factor(FS$stand)
+FS$home_team &lt;- as.factor(FS$home_team)</p>
+
+<p>FS$game_date &lt;- as.Date(FS$game_date)</p>
+
+<h1>subset</h1>
+
+<p>FS_working_data &lt;- ungroup(FS) %&gt;%
+    filter(game_date &lt;= &ldquo;2016-05-28&rdquo;) %&gt;%
+    select(hit_distance_sc:hit_angle, hc_x, hc_y, hit, stand, fieldingTeam, home_team,  row) %&gt;%
+    filter(!is.na(hit_distance_sc)) %&gt;%
+    filter(!is.na(hit_angle)) %&gt;% 
+    filter(!is.na(hit_speed)) %&gt;%
+    arrange(desc(hit))
+head(FS_working_data)
+str(ungroup(FS))
+table(FS_working_data$hit)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>FS_working_data &lt;- filter(FS_working_data, hc_x != 1, hc_y != 1)
+head(FS_working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>set.seed(42)
+FS_train &lt;- sample_frac(FS_working_data, .15, replace = FALSE)
+FS_split &lt;- setdiff(FS_working_data, FS_train)
+FS_test &lt;- sample_frac(FS_split, .50, replace = FALSE)
+FS_validate &lt;- setdiff(FS_split, FS_test)</p>
+
+<p>nrow(FS_train) + nrow(FS_test) + nrow(FS_validate) == nrow(FS_working_data)</p>
+
+<p>with(FS_train, table(hit)) %&gt;% prop.table()
+with(FS_test, table(hit)) %&gt;% prop.table()
+with(FS_validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(FS_train)</p>
+
+<p>FS_scaled_data &lt;- scale(FS_train[,c(1:5)])
+FS_scale_values &lt;- attr(FS_scaled_data, &#39;scaled:scale&#39;)
+FS_scale_values</p>
+
+<p>FS_center_values &lt;- attr(FS_scaled_data, &#39;scaled:center&#39;)
+FS_center_values</p>
+
+<p>FS_train &lt;- cbind(FS_scaled_data, select(FS_train, hit:row))</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>FS_levels_home_team &lt;- levels(FS_train$home_team)
+FS_levels_stand &lt;- levels(FS_train$stand)
+FS_levels_fieldingTeam &lt;- levels(FS_train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+#levels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>FS_test$hit_distance_sc &lt;- (FS_test$hit_distance_sc - FS_center_values[1]) / FS_scale_values[1]</p>
+
+<p>FS_test$hit_speed &lt;- (FS_test$hit_speed - FS_center_values[2]) / FS_scale_values[2]</p>
+
+<p>FS_test$hit_angle &lt;- (FS_test$hit_angle - FS_center_values[3]) / FS_scale_values[3]</p>
+
+<p>FS_test$hc_x &lt;- (FS_test$hc_x - FS_center_values[4]) / FS_scale_values[4]</p>
+
+<p>FS_test$hc_y &lt;- (FS_test$hc_y - FS_center_values[5]) / FS_scale_values[5]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>FS_validate$hit_distance_sc &lt;- (FS_validate$hit_distance_sc - FS_center_values[1]) / FS_scale_values[1]</p>
+
+<p>FS_validate$hit_speed &lt;- (FS_validate$hit_speed - FS_center_values[2]) / FS_scale_values[2]</p>
+
+<p>FS_validate$hit_angle &lt;- (FS_validate$hit_angle - FS_center_values[3]) / FS_scale_values[3]</p>
+
+<p>FS_validate$hc_x &lt;- (FS_validate$hc_x - FS_center_values[4]) / FS_scale_values[4]</p>
+
+<p>FS_validate$hc_y &lt;- (FS_validate$hc_y - FS_center_values[5]) / FS_scale_values[5]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(FS_train)</p>
+
+<p>set.seed(42)
+FS_rf.1 &lt;- randomForest(as.factor(hit) ~ ., data = select(FS_train, -row), ntree = 501, importance = TRUE)</p>
+
+<p>print(FS_rf.1)</p>
+
+<p>plot(FS_rf.1)</p>
+
+<p>varImpPlot(FS_rf.1)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, stand, fielding team and park</h1>
+
+<p>set.seed(42)
+FS_rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(FS_train, -row, -hit_distance_sc, -hc_y, -hc_x), importance = TRUE)</p>
+
+<p>print(FS_rf.5)</p>
+
+<p>plot(FS_rf.5)</p>
+
+<p>varImpPlot(FS_rf.5)</p>
+
+<p>FS_predict_fit.rf.5 &lt;- data.frame(fits = predict(FS_rf.5, FS_test, type = &ldquo;prob&rdquo;)[,2], actuals = FS_test$hit)</p>
+
+<p>FS_pred.rf.5 &lt;- prediction(FS_predict_fit.rf.5$fits, FS_predict_fit.rf.5$actuals)</p>
+
+<p>FS_roc.pred.rf.5 &lt;- performance(FS_pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)</p>
+
+<p>plot(FS_roc.pred.rf.5)
+abline(a = 0, b = 1)
+FS_opt &lt;- opt.cut(FS_roc.pred.rf.5, FS_pred.rf.5)
+FS_opt
+FS_opt &lt;- FS_opt[3]
+FS_predict_fit.rf.5$fits &lt;- with(FS_predict_fit.rf.5, ifelse(fits &gt; FS_opt, 1, 0)) </p>
+
+<p>FS_rf.5_confusion_test &lt;- confusionMatrix(model = rf.5, x = FS_test, y = FS_test$hit)
+FS_rf.5_confusion_validate &lt;- confusionMatrix(model = rf.5, x = FS_validate, y = FS_validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>FS_test_rows &lt;- FS_test$row
+FS_validate_rows &lt;- FS_validate$row
+FS_pred_data_emp_1 &lt;- ungroup(FS) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FS_test_rows)</p>
+
+<p>FS_pred_data_emp &lt;- ungroup(FS) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FS_validate_rows) %&gt;%
+    rbind(FS_pred_data_emp_1)</p>
+
+<p>FS_out_of_training_rows &lt;- FS_pred_data_emp$row</p>
+
+<p>FS_rf.5_full_out_of_sample_data &lt;- ungroup(FS) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FS_out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>FS_rf.5_full_out_of_sample_data_scaled &lt;- FS_rf.5_full_out_of_sample_data</p>
+
+<p>FS_rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (FS_rf.5_full_out_of_sample_data_scaled$hit_speed - FS_center_values[2]) / FS_scale_values[2]</p>
+
+<p>FS_rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (FS_rf.5_full_out_of_sample_data_scaled$hit_angle - FS_center_values[3]) / FS_scale_values[3]</p>
+
+<p>FS_rf.5.prob &lt;- predict(FS_rf.5, FS_rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>FS_rf.5_full_out_of_sample_data &lt;- cbind(filter(FS_rf.5_full_out_of_sample_data, row %in% FS_out_of_training_rows), FS_rf.5.prob)</p>
+
+<p>names(FS_rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;
+names(FS_rf.5_full_out_of_sample_data)</p>
+
+<p>FS_rf.5_full_out_of_sample_data_reduced &lt;- FS_rf.5_full_out_of_sample_data %&gt;%
+    select(hit_distance_sc, hit_angle, hit_speed, hit, fits)</p>
+
+<p>FS_rf.5_mean_table &lt;- FS_rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>FS_rf.5_full_out_of_sample_data$type &lt;- with(FS_rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>FS_rf.5_full_out_of_sample_data$hit_label &lt;- with(FS_rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>FS_rf.5_plot1 &lt;- ggplot(FS_rf.5_full_out_of_sample_data, aes(hit_angle, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>FS_rf.5_plot1</p>
+
+<p>FS_rf.5_plot2 &lt;- ggplot(FS_rf.5_full_out_of_sample_data, aes(hit_speed, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>FS_rf.5_plot2</p>
+
+<p>FS_rf.5_plot3 &lt;- ggplot(FS_rf.5_full_out_of_sample_data, aes(hit_angle, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Speed off the Bat\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>FS_rf.5_plot3</p>
+
+<p>FS_grid_plot_rf.5 &lt;- grid.arrange(FS_rf.5_plot1, FS_rf.5_plot2, FS_rf.5_plot3, ncol = 3)
+FS_grid_plot_rf.5</p>
+
+<p>#ggsave(&ldquo;grid_plot_rf.5.png&rdquo;, grid_plot_rf.5rf.5, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h2>predicted probabilities using rf.5</h2>
+
+<h1>create a data set that combines the test and validation sets</h1>
+
+<p>FS_test_rows &lt;- FS_test$row
+FS_validate_rows &lt;- FS_validate$row
+FS_pred_data_emp_1 &lt;- ungroup(FS) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% test_rows)</p>
+
+<p>FS_pred_data_emp &lt;- ungroup(FS) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% validate_rows) %&gt;%
+    rbind(FS_pred_data_emp_1)</p>
+
+<p>FS_out_of_training_rows &lt;- FS_pred_data_emp$row</p>
+
+<p>FS_pred_data_emp &lt;- ungroup(FS) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% FS_out_of_training_rows) %&gt;%
+    select(hit_angle, hit_speed, stand, fieldingTeam, home_team) %&gt;%
+    filter(complete.cases(.))</p>
+
+<h1>empirical data</h1>
+
+<p>FS_pred_data_emp_scaled &lt;- FS_pred_data_emp</p>
+
+<p>FS_pred_data_emp_scaled$hit_speed &lt;- (FS_pred_data_emp_scaled$hit_speed - FS_center_values[2]) / FS_scale_values[2]</p>
+
+<p>FS_pred_data_emp_scaled$hit_angle &lt;- (FS_pred_data_emp_scaled$hit_angle - FS_center_values[3]) / FS_scale_values[3]</p>
+
+<p>FS_pred_prob_hit &lt;- predict(FS_rf.5, FS_pred_data_emp_scaled, type = &ldquo;prob&rdquo;)[,2]
+FS_pred_prob_hit_fits &lt;- cbind(FS_pred_data_emp, FS_pred_prob_hit)</p>
+
+<p>FS_pred_prob_hit_fits[,c(1:2)] &lt;- FS_pred_prob_hit_fits[,c(1:2)] %&gt;%
+    round(.)</p>
+
+<p>FS_angle_speed_pred &lt;- FS_pred_prob_hit_fits %&gt;% ggplot(aes(hit_speed, hit_angle)) + geom_tile(aes(fill = FS_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(low = &ldquo;#006BA4&rdquo;, high = &ldquo;#C85200&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nPredicted Probability of a Hit Using Statcast Data (2016)\n&rdquo;) + theme_bp_grey()</p>
+
+<p>FS_angle_speed_pred</p>
+
+<p>##############</p>
+
+<h6>KN</h6>
+
+<p>KN$hit &lt;- with(KN, ifelse(grepl(&ldquo;Single&rdquo;, KN$events), 1,
+                                                    ifelse(grepl(&ldquo;Double&rdquo;, KN$events), 1,
+                                                                 ifelse(grepl(&ldquo;Triple&rdquo;, KN$events), 1, 
+                                                                             ifelse(grepl(&ldquo;Home Run&rdquo;, KN$events), 1, 0))))) %&gt;% 
+    as.factor()</p>
+
+<h1>create a variable for the fielding team</h1>
+
+<p>KN$fieldingTeam &lt;- with(KN, ifelse(inning_topbot == &ldquo;bot&rdquo;, away_team, home_team)) %&gt;% 
+    as.factor()</p>
+
+<p>#F$hit_distance_sc[KN$hit_distance_sc == &ldquo;null&rdquo;] = NA
+#KN$hit_speed[KN$hit_speed == &ldquo;null&rdquo;] = NA
+#KN$hit_angle[KN$hit_angle == &ldquo;null&rdquo;] = NA</p>
+
+<h1>include row names for unique record identification</h1>
+
+<p>KN$row &lt;- row.names(KN) %&gt;% as.numeric()</p>
+
+<h1>recode stand and home_team as factors</h1>
+
+<p>KN$stand &lt;- as.factor(KN$stand)
+KN$home_team &lt;- as.factor(KN$home_team)</p>
+
+<p>KN$game_date &lt;- as.Date(KN$game_date)</p>
+
+<h1>subset</h1>
+
+<p>KN_working_data &lt;- ungroup(KN) %&gt;%
+    filter(game_date &lt;= &ldquo;2016-05-28&rdquo;) %&gt;%
+    select(hit_distance_sc:hit_angle, hc_x, hc_y, hit, stand, fieldingTeam, home_team,  row) %&gt;%
+    filter(!is.na(hit_distance_sc)) %&gt;%
+    filter(!is.na(hit_angle)) %&gt;% 
+    filter(!is.na(hit_speed)) %&gt;%
+    arrange(desc(hit))
+head(KN_working_data)
+str(ungroup(KN))
+table(KN_working_data$hit)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>KN_working_data &lt;- filter(KN_working_data, hc_x != 1, hc_y != 1)
+head(KN_working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>set.seed(42)
+KN_train &lt;- sample_frac(KN_working_data, .15, replace = FALSE)
+KN_split &lt;- setdiff(KN_working_data, KN_train)
+KN_test &lt;- sample_frac(KN_split, .50, replace = FALSE)
+KN_validate &lt;- setdiff(KN_split, KN_test)</p>
+
+<p>nrow(KN_train) + nrow(KN_test) + nrow(KN_validate) == nrow(KN_working_data)</p>
+
+<p>with(KN_train, table(hit)) %&gt;% prop.table()
+with(KN_test, table(hit)) %&gt;% prop.table()
+with(KN_validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(KN_train)</p>
+
+<p>KN_scaled_data &lt;- scale(KN_train[,c(1:5)])
+KN_scale_values &lt;- attr(KN_scaled_data, &#39;scaled:scale&#39;)
+KN_scale_values</p>
+
+<p>KN_center_values &lt;- attr(KN_scaled_data, &#39;scaled:center&#39;)
+KN_center_values</p>
+
+<p>KN_train &lt;- cbind(KN_scaled_data, select(KN_train, hit:row))</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>KN_levels_home_team &lt;- levels(KN_train$home_team)
+KN_levels_stand &lt;- levels(KN_train$stand)
+KN_levels_fieldingTeam &lt;- levels(KN_train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+#levels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>KN_test$hit_distance_sc &lt;- (KN_test$hit_distance_sc - KN_center_values[1]) / KN_scale_values[1]</p>
+
+<p>KN_test$hit_speed &lt;- (KN_test$hit_speed - KN_center_values[2]) / KN_scale_values[2]</p>
+
+<p>KN_test$hit_angle &lt;- (KN_test$hit_angle - KN_center_values[3]) / KN_scale_values[3]</p>
+
+<p>KN_test$hc_x &lt;- (KN_test$hc_x - KN_center_values[4]) / KN_scale_values[4]</p>
+
+<p>KN_test$hc_y &lt;- (KN_test$hc_y - KN_center_values[5]) / KN_scale_values[5]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>KN_validate$hit_distance_sc &lt;- (KN_validate$hit_distance_sc - KN_center_values[1]) / KN_scale_values[1]</p>
+
+<p>KN_validate$hit_speed &lt;- (KN_validate$hit_speed - KN_center_values[2]) / KN_scale_values[2]</p>
+
+<p>KN_validate$hit_angle &lt;- (KN_validate$hit_angle - KN_center_values[3]) / KN_scale_values[3]</p>
+
+<p>KN_validate$hc_x &lt;- (KN_validate$hc_x - KN_center_values[4]) / KN_scale_values[4]</p>
+
+<p>KN_validate$hc_y &lt;- (KN_validate$hc_y - KN_center_values[5]) / KN_scale_values[5]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(KN_train)</p>
+
+<p>set.seed(42)
+KN_rf.1 &lt;- randomForest(as.factor(hit) ~ ., data = select(KN_train, -row), ntree = 501, importance = TRUE)</p>
+
+<p>print(KN_rf.1)</p>
+
+<p>plot(KN_rf.1)</p>
+
+<p>varImpPlot(KN_rf.1)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, stand, fielding team and park</h1>
+
+<p>set.seed(42)
+KN_rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(KN_train, -row, -hit_distance_sc, -hc_y, -hc_x), importance = TRUE)</p>
+
+<p>print(KN_rf.5)</p>
+
+<p>plot(KN_rf.5)</p>
+
+<p>varImpPlot(KN_rf.5)</p>
+
+<p>KN_predict_fit.rf.5 &lt;- data.frame(fits = predict(KN_rf.5, KN_test, type = &ldquo;prob&rdquo;)[,2], actuals = KN_test$hit)</p>
+
+<p>KN_pred.rf.5 &lt;- prediction(KN_predict_fit.rf.5$fits, KN_predict_fit.rf.5$actuals)</p>
+
+<p>KN_roc.pred.rf.5 &lt;- performance(KN_pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)</p>
+
+<p>plot(KN_roc.pred.rf.5)
+abline(a = 0, b = 1)
+KN_opt &lt;- opt.cut(KN_roc.pred.rf.5, KN_pred.rf.5)
+KN_opt
+KN_opt &lt;- KN_opt[3]
+KN_predict_fit.rf.5$fits &lt;- with(KN_predict_fit.rf.5, ifelse(fits &gt; KN_opt, 1, 0)) </p>
+
+<p>KN_rf.5_confusion_test &lt;- confusionMatrix(model = rf.5, x = KN_test, y = KN_test$hit)
+KN_rf.5_confusion_validate &lt;- confusionMatrix(model = rf.5, x = KN_validate, y = KN_validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>KN_test_rows &lt;- KN_test$row
+KN_validate_rows &lt;- KN_validate$row
+KN_pred_data_emp_1 &lt;- ungroup(KN) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% KN_test_rows)</p>
+
+<p>KN_pred_data_emp &lt;- ungroup(KN) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% KN_validate_rows) %&gt;%
+    rbind(KN_pred_data_emp_1)</p>
+
+<p>KN_out_of_training_rows &lt;- KN_pred_data_emp$row</p>
+
+<p>KN_rf.5_full_out_of_sample_data &lt;- ungroup(KN) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% KN_out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>KN_rf.5_full_out_of_sample_data_scaled &lt;- KN_rf.5_full_out_of_sample_data</p>
+
+<p>KN_rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (KN_rf.5_full_out_of_sample_data_scaled$hit_speed - KN_center_values[2]) / KN_scale_values[2]</p>
+
+<p>KN_rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (KN_rf.5_full_out_of_sample_data_scaled$hit_angle - KN_center_values[3]) / KN_scale_values[3]</p>
+
+<p>KN_rf.5.prob &lt;- predict(KN_rf.5, KN_rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>KN_rf.5_full_out_of_sample_data &lt;- cbind(filter(KN_rf.5_full_out_of_sample_data, row %in% KN_out_of_training_rows), KN_rf.5.prob)</p>
+
+<p>names(KN_rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;
+names(KN_rf.5_full_out_of_sample_data)</p>
+
+<p>KN_rf.5_full_out_of_sample_data_reduced &lt;- KN_rf.5_full_out_of_sample_data %&gt;%
+    select(hit_distance_sc, hit_angle, hit_speed, hit, fits)</p>
+
+<p>KN_rf.5_mean_table &lt;- KN_rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>KN_rf.5_full_out_of_sample_data$type &lt;- with(KN_rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>KN_rf.5_full_out_of_sample_data$hit_label &lt;- with(KN_rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>KN_rf.5_plot1 &lt;- ggplot(KN_rf.5_full_out_of_sample_data, aes(hit_angle, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>KN_rf.5_plot1</p>
+
+<p>KN_rf.5_plot2 &lt;- ggplot(KN_rf.5_full_out_of_sample_data, aes(hit_speed, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>KN_rf.5_plot2</p>
+
+<p>KN_rf.5_plot3 &lt;- ggplot(KN_rf.5_full_out_of_sample_data, aes(hit_angle, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Speed off the Bat\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>KN_rf.5_plot3</p>
+
+<p>KN_grid_plot_rf.5 &lt;- grid.arrange(KN_rf.5_plot1, KN_rf.5_plot2, KN_rf.5_plot3, ncol = 3)
+KN_grid_plot_rf.5</p>
+
+<p>#ggsave(&ldquo;grid_plot_rf.5.png&rdquo;, grid_plot_rf.5rf.5, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h2>predicted probabilities using rf.5</h2>
+
+<h1>create a data set that combines the test and validation sets</h1>
+
+<p>KN_test_rows &lt;- KN_test$row
+KN_validate_rows &lt;- KN_validate$row
+KN_pred_data_emp_1 &lt;- ungroup(KN) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% test_rows)</p>
+
+<p>KN_pred_data_emp &lt;- ungroup(KN) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% validate_rows) %&gt;%
+    rbind(KN_pred_data_emp_1)</p>
+
+<p>KN_out_of_training_rows &lt;- KN_pred_data_emp$row</p>
+
+<p>KN_pred_data_emp &lt;- ungroup(KN) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% KN_out_of_training_rows) %&gt;%
+    select(hit_angle, hit_speed, stand, fieldingTeam, home_team) %&gt;%
+    filter(complete.cases(.))</p>
+
+<h1>empirical data</h1>
+
+<p>KN_pred_data_emp_scaled &lt;- KN_pred_data_emp</p>
+
+<p>KN_pred_data_emp_scaled$hit_speed &lt;- (KN_pred_data_emp_scaled$hit_speed - KN_center_values[2]) / KN_scale_values[2]</p>
+
+<p>KN_pred_data_emp_scaled$hit_angle &lt;- (KN_pred_data_emp_scaled$hit_angle - KN_center_values[3]) / KN_scale_values[3]</p>
+
+<p>KN_pred_prob_hit &lt;- predict(KN_rf.5, KN_pred_data_emp_scaled, type = &ldquo;prob&rdquo;)[,2]
+KN_pred_prob_hit_fits &lt;- cbind(KN_pred_data_emp, KN_pred_prob_hit)</p>
+
+<p>KN_pred_prob_hit_fits[,c(1:2)] &lt;- KN_pred_prob_hit_fits[,c(1:2)] %&gt;%
+    round(.)</p>
+
+<p>KN_angle_speed_pred &lt;- KN_pred_prob_hit_fits %&gt;% ggplot(aes(hit_speed, hit_angle)) + geom_tile(aes(fill = KN_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(low = &ldquo;#006BA4&rdquo;, high = &ldquo;#C85200&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nPredicted Probability of a Hit Using Statcast Data (2016)\n&rdquo;) + theme_bp_grey()</p>
+
+<p>KN_angle_speed_pred</p>
+
+<p>######################</p>
+
+<h3>SC</h3>
+
+<p>SI$hit_distance_sc &lt;- as.numeric(SI$hit_distance_sc)
+SI$hit_angle &lt;- as.numeric(SI$hit_angle)
+SI$hit_speed &lt;- as.numeric(SI$hit_speed)
+SI$hit &lt;- with(SI, ifelse(grepl(&ldquo;Single&rdquo;, SI$events), 1,
+                                                    ifelse(grepl(&ldquo;Double&rdquo;, SI$events), 1,
+                                                                 ifelse(grepl(&ldquo;Triple&rdquo;, SI$events), 1, 
+                                                                             ifelse(grepl(&ldquo;Home Run&rdquo;, SI$events), 1, 0))))) %&gt;% 
+    as.factor()</p>
+
+<h1>create a variable for the fielding team</h1>
+
+<p>SI$fieldingTeam &lt;- with(SI, ifelse(inning_topbot == &ldquo;bot&rdquo;, away_team, home_team)) %&gt;% 
+    as.factor()</p>
+
+<p>#F$hit_distance_sc[SI$hit_distance_sc == &ldquo;null&rdquo;] = NA
+#SI$hit_speed[SI$hit_speed == &ldquo;null&rdquo;] = NA
+#SI$hit_angle[SI$hit_angle == &ldquo;null&rdquo;] = NA</p>
+
+<h1>include row names for unique record identification</h1>
+
+<p>SI$row &lt;- row.names(SI) %&gt;% as.numeric()</p>
+
+<h1>recode stand and home_team as factors</h1>
+
+<p>SI$stand &lt;- as.factor(SI$stand)
+SI$home_team &lt;- as.factor(SI$home_team)</p>
+
+<p>SI$game_date &lt;- as.Date(SI$game_date)</p>
+
+<h1>subset</h1>
+
+<p>SI_working_data &lt;- ungroup(SI) %&gt;%
+    filter(game_date &lt;= &ldquo;2016-05-28&rdquo;) %&gt;%
+    select(hit_distance_sc:hit_angle, hc_x, hc_y, hit, stand, fieldingTeam, home_team,  row) %&gt;%
+    filter(!is.na(hit_distance_sc)) %&gt;%
+    filter(!is.na(hit_angle)) %&gt;% 
+    filter(!is.na(hit_speed)) %&gt;%
+    arrange(desc(hit))
+head(SI_working_data)
+str(ungroup(SI))
+table(SI_working_data$hit)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>SI_working_data &lt;- filter(SI_working_data, hc_x != 1, hc_y != 1)
+head(SI_working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>set.seed(42)
+SI_train &lt;- sample_frac(SI_working_data, .15, replace = FALSE)
+SI_split &lt;- setdiff(SI_working_data, SI_train)
+SI_test &lt;- sample_frac(SI_split, .50, replace = FALSE)
+SI_validate &lt;- setdiff(SI_split, SI_test)</p>
+
+<p>nrow(SI_train) + nrow(SI_test) + nrow(SI_validate) == nrow(SI_working_data)</p>
+
+<p>with(SI_train, table(hit)) %&gt;% prop.table()
+with(SI_test, table(hit)) %&gt;% prop.table()
+with(SI_validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(SI_train)</p>
+
+<p>SI_scaled_data &lt;- scale(SI_train[,c(1:5)])
+SI_scale_values &lt;- attr(SI_scaled_data, &#39;scaled:scale&#39;)
+SI_scale_values</p>
+
+<p>SI_center_values &lt;- attr(SI_scaled_data, &#39;scaled:center&#39;)
+SI_center_values</p>
+
+<p>SI_train &lt;- cbind(SI_scaled_data, select(SI_train, hit:row))</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>SI_levels_home_team &lt;- levels(SI_train$home_team)
+SI_levels_stand &lt;- levels(SI_train$stand)
+SI_levels_fieldingTeam &lt;- levels(SI_train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+#levels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>SI_test$hit_distance_sc &lt;- (SI_test$hit_distance_sc - SI_center_values[1]) / SI_scale_values[1]</p>
+
+<p>SI_test$hit_speed &lt;- (SI_test$hit_speed - SI_center_values[2]) / SI_scale_values[2]</p>
+
+<p>SI_test$hit_angle &lt;- (SI_test$hit_angle - SI_center_values[3]) / SI_scale_values[3]</p>
+
+<p>SI_test$hc_x &lt;- (SI_test$hc_x - SI_center_values[4]) / SI_scale_values[4]</p>
+
+<p>SI_test$hc_y &lt;- (SI_test$hc_y - SI_center_values[5]) / SI_scale_values[5]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>SI_validate$hit_distance_sc &lt;- (SI_validate$hit_distance_sc - SI_center_values[1]) / SI_scale_values[1]</p>
+
+<p>SI_validate$hit_speed &lt;- (SI_validate$hit_speed - SI_center_values[2]) / SI_scale_values[2]</p>
+
+<p>SI_validate$hit_angle &lt;- (SI_validate$hit_angle - SI_center_values[3]) / SI_scale_values[3]</p>
+
+<p>SI_validate$hc_x &lt;- (SI_validate$hc_x - SI_center_values[4]) / SI_scale_values[4]</p>
+
+<p>SI_validate$hc_y &lt;- (SI_validate$hc_y - SI_center_values[5]) / SI_scale_values[5]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(SI_train)</p>
+
+<p>set.seed(42)
+SI_rf.1 &lt;- randomForest(as.factor(hit) ~ ., data = select(SI_train, -row), ntree = 501, importance = TRUE)</p>
+
+<p>print(SI_rf.1)</p>
+
+<p>plot(SI_rf.1)</p>
+
+<p>varImpPlot(SI_rf.1)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, stand, fielding team and park</h1>
+
+<p>set.seed(42)
+SI_rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(SI_train, -row, -hit_distance_sc, -hc_y, -hc_x), importance = TRUE)</p>
+
+<p>print(SI_rf.5)</p>
+
+<p>plot(SI_rf.5)</p>
+
+<p>varImpPlot(SI_rf.5)</p>
+
+<p>SI_predict_fit.rf.5 &lt;- data.frame(fits = predict(SI_rf.5, SI_test, type = &ldquo;prob&rdquo;)[,2], actuals = SI_test$hit)</p>
+
+<p>SI_pred.rf.5 &lt;- prediction(SI_predict_fit.rf.5$fits, SI_predict_fit.rf.5$actuals)</p>
+
+<p>SI_roc.pred.rf.5 &lt;- performance(SI_pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)</p>
+
+<p>plot(SI_roc.pred.rf.5)
+abline(a = 0, b = 1)
+SI_opt &lt;- opt.cut(SI_roc.pred.rf.5, SI_pred.rf.5)
+SI_opt
+SI_opt &lt;- SI_opt[3]
+SI_predict_fit.rf.5$fits &lt;- with(SI_predict_fit.rf.5, ifelse(fits &gt; SI_opt, 1, 0)) </p>
+
+<p>SI_rf.5_confusion_test &lt;- confusionMatrix(model = rf.5, x = SI_test, y = SI_test$hit)
+SI_rf.5_confusion_validate &lt;- confusionMatrix(model = rf.5, x = SI_validate, y = SI_validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>SI_test_rows &lt;- SI_test$row
+SI_validate_rows &lt;- SI_validate$row
+SI_pred_data_emp_1 &lt;- ungroup(SI) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% SI_test_rows)</p>
+
+<p>SI_pred_data_emp &lt;- ungroup(SI) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% SI_validate_rows) %&gt;%
+    rbind(SI_pred_data_emp_1)</p>
+
+<p>SI_out_of_training_rows &lt;- SI_pred_data_emp$row</p>
+
+<p>SI_rf.5_full_out_of_sample_data &lt;- ungroup(SI) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% SI_out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>SI_rf.5_full_out_of_sample_data_scaled &lt;- SI_rf.5_full_out_of_sample_data</p>
+
+<p>SI_rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (SI_rf.5_full_out_of_sample_data_scaled$hit_speed - SI_center_values[2]) / SI_scale_values[2]</p>
+
+<p>SI_rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (SI_rf.5_full_out_of_sample_data_scaled$hit_angle - SI_center_values[3]) / SI_scale_values[3]</p>
+
+<p>SI_rf.5.prob &lt;- predict(SI_rf.5, SI_rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>SI_rf.5_full_out_of_sample_data &lt;- cbind(filter(SI_rf.5_full_out_of_sample_data, row %in% SI_out_of_training_rows), SI_rf.5.prob)</p>
+
+<p>names(SI_rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;
+names(SI_rf.5_full_out_of_sample_data)</p>
+
+<p>SI_rf.5_full_out_of_sample_data_reduced &lt;- SI_rf.5_full_out_of_sample_data %&gt;%
+    select(hit_distance_sc, hit_angle, hit_speed, hit, fits)</p>
+
+<p>SI_rf.5_mean_table &lt;- SI_rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>SI_rf.5_full_out_of_sample_data$type &lt;- with(SI_rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>SI_rf.5_full_out_of_sample_data$hit_label &lt;- with(SI_rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>SI_rf.5_plot1 &lt;- ggplot(SI_rf.5_full_out_of_sample_data, aes(hit_angle, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>SI_rf.5_plot1</p>
+
+<p>SI_rf.5_plot2 &lt;- ggplot(SI_rf.5_full_out_of_sample_data, aes(hit_speed, hit_distance_sc)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>SI_rf.5_plot2</p>
+
+<p>SI_rf.5_plot3 &lt;- ggplot(SI_rf.5_full_out_of_sample_data, aes(hit_angle, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Speed off the Bat\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>SI_rf.5_plot3</p>
+
+<p>SI_grid_plot_rf.5 &lt;- grid.arrange(SI_rf.5_plot1, SI_rf.5_plot2, SI_rf.5_plot3, ncol = 3)
+SI_grid_plot_rf.5</p>
+
+<p>#ggsave(&ldquo;grid_plot_rf.5.png&rdquo;, grid_plot_rf.5rf.5, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h2>predicted probabilities using rf.5</h2>
+
+<h1>create a data set that combines the test and validation sets</h1>
+
+<p>SI_test_rows &lt;- SI_test$row
+SI_validate_rows &lt;- SI_validate$row
+SI_pred_data_emp_1 &lt;- ungroup(SI) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% test_rows)</p>
+
+<p>SI_pred_data_emp &lt;- ungroup(SI) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% validate_rows) %&gt;%
+    rbind(SI_pred_data_emp_1)</p>
+
+<p>SI_out_of_training_rows &lt;- SI_pred_data_emp$row</p>
+
+<p>SI_pred_data_emp &lt;- ungroup(SI) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% SI_out_of_training_rows) %&gt;%
+    select(hit_angle, hit_speed, stand, fieldingTeam, home_team) %&gt;%
+    filter(complete.cases(.))</p>
+
+<h1>empirical data</h1>
+
+<p>SI_pred_data_emp_scaled &lt;- SI_pred_data_emp</p>
+
+<p>SI_pred_data_emp_scaled$hit_speed &lt;- (SI_pred_data_emp_scaled$hit_speed - SI_center_values[2]) / SI_scale_values[2]</p>
+
+<p>SI_pred_data_emp_scaled$hit_angle &lt;- (SI_pred_data_emp_scaled$hit_angle - SI_center_values[3]) / SI_scale_values[3]</p>
+
+<p>SI<em>pred_data_emp_scaled$hit</em> &lt;- (SI_pred_data_emp_scaled$hit_speed - SI_center_values[2]) / SI_scale_values[2]##</p>
+
+<p>SI_pred_prob_hit &lt;- predict(SI_rf.5, SI_pred_data_emp_scaled, type = &ldquo;prob&rdquo;)[,2]
+SI_pred_prob_hit_fits &lt;- cbind(SI_pred_data_emp, SI_pred_prob_hit)</p>
+
+<p>SI_pred_prob_hit_fits[,c(1:2)] &lt;- SI_pred_prob_hit_fits[,c(1:2)] %&gt;%
+    round(.)</p>
+
+<p>SI_angle_speed_pred &lt;- SI_pred_prob_hit_fits %&gt;% ggplot(aes(hit_speed, hit_angle)) + geom_tile(aes(fill = SI_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(low = &ldquo;#006BA4&rdquo;, high = &ldquo;#C85200&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nPredicted Probability of a Hit Using Statcast Data (2016)\n&rdquo;) + theme_bp_grey()</p>
+
+<p>SI_angle_speed_pred</p>
+
+<p>##
+SI_dist_angle_pred &lt;- SI_pred_prob_hit_fits %&gt;% ggplot(aes(hit_distance_sc, hit_angle)) + geom_tile(aes(fill = SI_pred_prob_hit), alpha = .5, size = .05, color = &ldquo;white&rdquo;) + scale_fill_gradient(low = &ldquo;#006BA4&rdquo;, high = &ldquo;#C85200&rdquo;, &ldquo;Probability\nof Hit\n&rdquo;, labels = percent) + xlab(&ldquo;\nSpeed off the Bat&rdquo;) + ylab(&ldquo;Launch Angle\n&rdquo;) + ggtitle(&ldquo;\nPredicted Probability of a Hit Using Statcast Data (2016)\n&rdquo;) + theme_bp_grey()
+##
+SI_dist_angle_pred</p>
+
+<p>#######STOP HERE###########
+#####
+#####</p>
+
+<p>ggsave(&ldquo;angle_speed_pred.png&rdquo;, angle_speed_pred, scale = 1.2, width = 11, height = 8.5, units = &ldquo;in&rdquo;)</p>
+
+<h1>calculate average probabilities by bucketed angles and speed, and compare to actual</h1>
+
+<p>pred_prob_hit_fits$angle_buckets &lt;- cut(pred_prob_hit_fits$hit_angle, seq(from = -90, to = 90, by = 10), include.lowest = TRUE)</p>
+
+<p>pred_prob_hit_fits$speed_buckets &lt;- cut(pred_prob_hit_fits$hit_speed, seq(from = 0, to = 140, by = 10), include.lowest = TRUE)</p>
+
+<p>pred_prob_by_buckets &lt;- pred_prob_hit_fits %&gt;% 
+    group_by(angle_buckets, speed_buckets) %&gt;% 
+    summarise(ave_prob = round(mean(pred_prob_hit),3)) %&gt;%
+    ungroup(.) %&gt;%
+    arrange(desc(speed_buckets), desc(angle_buckets))</p>
+
+<p>empirical_prob_hit &lt;- select(working_data_original, hit_distance_sc:hit)</p>
+
+<p>empirical_prob_hit$angle_buckets &lt;- cut(empirical_prob_hit$hit_angle, seq(from = -90, to = 90, by = 10), include.lowest = TRUE)</p>
+
+<p>empirical_prob_hit$speed_buckets &lt;- cut(empirical_prob_hit$hit_speed, seq(from = 0, to = 140, by = 10), include.lowest = TRUE)</p>
+
+<p>empirical_prob_hit &lt;- empirical_prob_hit %&gt;% 
+    group_by(angle_buckets, speed_buckets) %&gt;% 
+    summarise(count = n(), empirical_ave = round(mean(hit),3)) %&gt;%
+    ungroup(.) %&gt;%
+    arrange(desc(speed_buckets), desc(angle_buckets))</p>
+
+<p>compare_prob &lt;- left_join(pred_prob_by_buckets, empirical_prob_hit, by = c(&ldquo;angle_buckets&rdquo;, &ldquo;speed_buckets&rdquo;))</p>
+
+<p>compare_prob &lt;- arrange(compare_prob, angle_buckets, speed_buckets)</p>
+
+<h1>remove apparently miscoded balls with x,y of 1,1</h1>
+
+<p>working_data &lt;- filter(working_data, hc_x != 1, hc_y != 1)
+head(working_data)</p>
+
+<h1>create training and test sets</h1>
+
+<h1>scaled data</h1>
+
+<p>set.seed(42)
+train &lt;- sample_frac(working_data, .15, replace = FALSE)
+split &lt;- setdiff(working_data, train)
+test &lt;- sample_frac(split, .50, replace = FALSE)
+validate &lt;- setdiff(split, test)</p>
+
+<p>nrow(train) + nrow(test) + nrow(validate) == nrow(working_data)</p>
+
+<p>with(train, table(hit)) %&gt;% prop.table()
+with(test, table(hit)) %&gt;% prop.table()
+with(validate, table(hit)) %&gt;% prop.table()</p>
+
+<h1>normalize exit velocity, launch angle and distance</h1>
+
+<h1>scaled features</h1>
+
+<p>head(train)</p>
+
+<p>scaled_data &lt;- scale(train[,c(1:5)])
+scale_values &lt;- attr(scaled_data, &#39;scaled:scale&#39;)
+scale_values</p>
+
+<p>center_values &lt;- attr(scaled_data, &#39;scaled:center&#39;)
+center_values</p>
+
+<p>train &lt;- cbind(scaled_data, select(train, hit:row))
+#train &lt;- train[-c(10:12)]
+head(train)</p>
+
+<h1>save levels for factor variables</h1>
+
+<p>levels_home_team &lt;- levels(train$home_team)
+levels_stand &lt;- levels(train$stand)
+levels_fieldingTeam &lt;- levels(train$fieldingTeam)
+#levels_first_pitch &lt;- levels(train$first_pitch)
+l#evels_second_pitch &lt;- levels(train$levels_second_pitch)</p>
+
+<h1>apply scaling to test data</h1>
+
+<p>test$hit_distance_sc &lt;- (test$hit_distance_sc - center_values[1]) / scale_values[1]</p>
+
+<p>test$hit_speed &lt;- (test$hit_speed - center_values[2]) / scale_values[2]</p>
+
+<p>test$hit_angle &lt;- (test$hit_angle - center_values[3]) / scale_values[3]</p>
+
+<p>test$hc_x &lt;- (test$hc_x - center_values[4]) / scale_values[4]</p>
+
+<p>test$hc_y &lt;- (test$hc_y - center_values[5]) / scale_values[5]</p>
+
+<p>#test$px &lt;- (test$px - center_values[6])/scale_values[6]</p>
+
+<p>#test$pz &lt;- (test$pz - center_values[7])/scale_values[7]</p>
+
+<p>#test$break_length &lt;- (test$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>apply scaling to validation data</h1>
+
+<p>validate$hit_distance_sc &lt;- (validate$hit_distance_sc - center_values[1]) / scale_values[1]</p>
+
+<p>validate$hit_speed &lt;- (validate$hit_speed - center_values[2]) / scale_values[2]</p>
+
+<p>validate$hit_angle &lt;- (validate$hit_angle - center_values[3]) / scale_values[3]</p>
+
+<p>validate$hc_x &lt;- (validate$hc_x - center_values[4]) / scale_values[4]</p>
+
+<p>validate$hc_y &lt;- (validate$hc_y - center_values[5]) / scale_values[5]</p>
+
+<p>#validate$px &lt;- (validate$px - center_values[6]) / scale_values[6]</p>
+
+<p>#validate$pz &lt;- (validate$pz - center_values[7])/scale_values[7]</p>
+
+<p>#validate$break_length &lt;- (validate$break_length - center_values[8])/scale_values[8]</p>
+
+<h1>build, test, validate models</h1>
+
+<h1>model hit/no-hit random forest</h1>
+
+<h1>with all variables</h1>
+
+<p>head(train)</p>
+
+<h1>predict values and tune for optimal out of sample accuracy</h1>
+
+<p>opt.cut = function(perf, pred){
+    cut.ind = mapply(FUN=function(x, y, p){
+        d = (x - 0)<sup>2</sup> + (y-1)<sup>2</sup>
+        ind = which(d == min(d))
+        c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+            cutoff = p[[ind]])
+    }, <a href="mailto:perf@x.values">perf@x.values</a>, <a href="mailto:perf@y.values">perf@y.values</a>, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))</p>
+
+<h1>only speed, angle, stand, fielding team and park</h1>
+
+<p>set.seed(42)
+rf.5 &lt;- randomForest(as.factor(hit) ~ ., mtry = 2, ntrees = 501, data = select(train, -row, -hit_distance_sc, -hc_y, -hc_x), importance = TRUE)</p>
+
+<p>print(rf.5)</p>
+
+<p>plot(rf.5)</p>
+
+<p>varImpPlot(rf.5)</p>
+
+<p>predict_fit.rf.5 &lt;- data.frame(fits = predict(rf.5, test, type = &ldquo;prob&rdquo;)[,2], actuals = test$hit)</p>
+
+<p>pred.rf.5 &lt;- prediction(predict_fit.rf.5$fits, predict_fit.rf.5$actuals)
+roc.pred.rf.5 &lt;- performance(pred.rf.5, measure = &ldquo;tpr&rdquo;, x.measure = &ldquo;fpr&rdquo;)
+plot(roc.pred.rf.5)
+abline(a = 0, b = 1)
+opt &lt;- opt.cut(roc.pred.rf.5, pred.rf.5)
+opt
+opt &lt;- opt[3]
+predict_fit.rf.5$fits &lt;- with(predict_fit.rf.5, ifelse(fits &gt; opt, 1, 0)) </p>
+
+<p>rf.5_confusion_test &lt;- confusionMatrix(model = rf.5, x = test, y = test$hit)
+rf.5_confusion_validate &lt;- confusionMatrix(model = rf.5, x = validate, y = validate$hit)</p>
+
+<h1>can we improve the model by altering the number of variables randomly tried at each branch?</h1>
+
+<p>tune.rf.2 &lt;- tuneRF((train[,c(2:3, 7:9)], train[,6]), stepFactor = .5, plot = TRUE)</p>
+
+<h1>mtry = 2 is the optimal number</h1>
+
+<h1>the optimal model appears to be rf.5</h1>
+
+<h1>plot the performance of the model based on the three features included</h1>
+
+<h1>examine whether the model is missing systematically for certain records</h1>
+
+<p>test_rows &lt;- test$row
+validate_rows &lt;- validate$row
+pred_data_emp_1 &lt;- ungroup(statcast.2016) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% test_rows)</p>
+
+<p>pred_data_emp &lt;- ungroup(statcast.2016) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% validate_rows) %&gt;%
+    rbind(pred_data_emp_1)</p>
+
+<p>out_of_training_rows &lt;- pred_data_emp$row</p>
+
+<p>rf.5_full_out_of_sample_data &lt;- ungroup(statcast.2016) %&gt;% 
+    filter(hc_x != 1, hc_y != 1) %&gt;% 
+    filter(row %in% out_of_training_rows) %&gt;%
+    filter(!is.na(hit_speed)) %&gt;%
+    filter(!is.na(hit_angle))</p>
+
+<p>rf.5_full_out_of_sample_data_scaled &lt;- rf.5_full_out_of_sample_data</p>
+
+<p>rf.5_full_out_of_sample_data_scaled$hit_speed &lt;- (rf.5_full_out_of_sample_data_scaled$hit_speed - center_values[2]) / scale_values[2]</p>
+
+<p>rf.5_full_out_of_sample_data_scaled$hit_angle &lt;- (rf.5_full_out_of_sample_data_scaled$hit_angle - center_values[3]) / scale_values[3]</p>
+
+<p>rf.5.prob &lt;- predict(rf.5, rf.5_full_out_of_sample_data_scaled, type = &ldquo;response&rdquo;)</p>
+
+<p>rf.5_full_out_of_sample_data &lt;- cbind(filter(rf.5_full_out_of_sample_data, row %in% out_of_training_rows), rf.5.prob)</p>
+
+<p>names(rf.5_full_out_of_sample_data)[65] &lt;- &ldquo;fits&rdquo;</p>
+
+<p>rf.5_full_out_of_sample_data_reduced &lt;- rf.5_full_out_of_sample_data %&gt;%</p>
+
+<pre><code>select(hit_distance_sc, hit_angle, hit_speed, hit, fits)
+</code></pre>
+
+<p>rf.5_mean_table &lt;- rf.5_full_out_of_sample_data_reduced %&gt;% 
+    group_by(hit, fits) %&gt;%
+    summarise_each(funs(mean(., na.rm = TRUE),n()))</p>
+
+<p>rf.5_full_out_of_sample_data$type &lt;- with(rf.5_full_out_of_sample_data, ifelse(hit == fits, 1, 0))</p>
+
+<p>rf.5_full_out_of_sample_data$hit_label &lt;- with(rf.5_full_out_of_sample_data, ifelse(hit == 1, &ldquo;Hit&rdquo;, &ldquo;Out&rdquo;))</p>
+
+<h1>condensed tab palette</h1>
+
+<p>source(&ldquo;<a href="https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey%22">https://raw.githubusercontent.com/BillPetti/R-Plotting-Resources/master/theme_bp_grey&rdquo;</a>)</p>
+
+<p>tab_condensed &lt;- c(&ldquo;#006BA4&rdquo;, &ldquo;#C85200&rdquo;)</p>
+
+<p>rf.5_plot1 &lt;- ggplot(rf.5_full_out_of_sample_data, aes(hit_distance_sc, hit_angle)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nLaunch Angle&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>rf.5_plot1</p>
+
+<p>rf.5_plot2 &lt;- ggplot(rf.5_full_out_of_sample_data, aes(hit_distance_sc, hit_speed)) +
+    geom_point(aes(color = as.factor(type)), alpha = .2) + 
+    xlab(&ldquo;\nSpeed off the Bat&rdquo;) +
+    ylab(&ldquo;Batted Ball Distance (ft.)\n&rdquo;) +
+    facet_wrap(~hit_label) + 
+    theme_bp_grey() + 
+    theme(strip.text.x = element_text(face = &ldquo;bold&rdquo;, size = 14)) +
+    scale_color_manual(values = tab_condensed, guide = FALSE)</p>
+
+<p>rf.5_plot2</p>
+
+</body>
+
+</html>
+
